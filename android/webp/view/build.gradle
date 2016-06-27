@@ -1,0 +1,38 @@
+apply plugin: 'com.android.application'
+
+ android {
+     compileSdkVersion 23
+     buildToolsVersion '23.0.2'
+
+     defaultConfig {
+         applicationId 'com.example.webp_view'
+         minSdkVersion  9
+         targetSdkVersion 23
+         externalNativeBuild {
+             cmake {
+                 abiFilters 'x86', 'x86_64', 'armeabi', 'armeabi-v7a', 'arm64-v8a'
+             }
+         }
+     }
+     buildTypes {
+         release {
+             minifyEnabled false
+             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+         }
+    }
+     externalNativeBuild {
+         cmake {
+             // platformVersion 9
+             path 'CMakeLists.txt'
+         }
+     }
+}
+
+// ******** Get Webp source code if not downloaded yet *******
+if(!file("../libwebp").exists()) {
+    exec {
+        workingDir("..")
+        executable 'git'
+        args = ["clone", "https://chromium.googlesource.com/webm/libwebp", "libwebp"]
+    }
+}

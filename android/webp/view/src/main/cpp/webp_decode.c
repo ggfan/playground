@@ -46,11 +46,13 @@ int decode_file(const char* in_file, ANativeWindow_Buffer* frameBuf, AAssetManag
     int bytePerPixel = 2;
     config.options.bypass_filtering = 1;
     config.options.no_fancy_upsampling = 1;
-    config.options.flip = 0;  //try his one out
-    config.options.use_scaling = 0; //try this one out too
+    config.options.flip = 0;
     config.options.use_scaling = 1;
     config.options.scaled_width = frameBuf->width;
     config.options.scaled_height = frameBuf->height;
+
+    //this does not seems to be working for android.
+    config.options.use_threads = 1;
 
     switch (frameBuf->format) {
         case WINDOW_FORMAT_RGB_565:
@@ -67,20 +69,19 @@ int decode_file(const char* in_file, ANativeWindow_Buffer* frameBuf, AAssetManag
             return -1;
     }
     config.output.width = frameBuf->width;
-    config.output.height =frameBuf->height;
-    config.output.is_external_memory = 0;
+    config.output.height = frameBuf->height;
+    config.output.is_external_memory = 1;
+    config.output.private_memory = frameBuf->bits;
+    config.output.u.RGBA.stride = frameBuf->stride * bytePerPixel;
+    config.output.u.RGBA.rgba  = frameBuf->bits;
+    config.output.u.RGBA.size  = config.output.height * config.output.u.RGBA.stride;
+
 
     status = WebPDecode(buf, len, &config);
     if (status != VP8_STATUS_OK) {
         assert(0);
         free(buf);
         return -1;
-    }
-
-    for (int32_t line = 0; line < frameBuf->height; ++line) {
-        memcpy(frameBuf->bits + line * frameBuf->stride * bytePerPixel,
-               config.output.u.RGBA.rgba + line * config.output.u.RGBA.stride,
-               frameBuf->stride * bytePerPixel);
     }
 
     WebPFreeDecBuffer(&config.output);

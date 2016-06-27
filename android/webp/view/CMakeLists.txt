@@ -18,8 +18,10 @@ cmake_minimum_required(VERSION 3.4.1)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-add_subdirectory(../../../../libwebp/scripts/
-                /Users/gfan/tmp/ )
+set(webp_src_dir ../libwebp)
+SET(WEBP_ENABLE_SWAP_16BIT_CSP ON CACHE BOOL
+    "Enable byte swap for 16 bit colorspaces." FORCE)
+add_subdirectory(${webp_src_dir} ${webp_src_dir}/build/)
 
 # build native_app_glue as a static lib
 include_directories(${ANDROID_NDK}/sources/android/native_app_glue)
@@ -28,16 +30,10 @@ add_library(app-glue STATIC
             ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
 
 # now build app's shared lib
-set(webp_src_dir ../../../../libwebp/src)
 include_directories(${webp_src_dir}/examples
-                    ${webp_src_dir}/src
-                    )
+                    ${webp_src_dir}/src)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-add_library(native-plasma SHARED
-                          plasma.c
-                          ${webp_src_dir}/examples/example_util.c
-                          ${webp_src_dir}/examples/webpdec.c
-                          webp_decode.c)
+add_library(webp-view SHARED src/main/cpp/webp_view.c src/main/cpp/webp_decode.c)
 
 # add lib dependencies
-target_link_libraries(native-plasma android log m app-glue webp)
+target_link_libraries(webp-view android log m app-glue webp)
