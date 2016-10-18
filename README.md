@@ -8,6 +8,5 @@ A repo for the fun-seeking minds of mine!  Experimentation keeps on moving forwa
 Branches
 --------
  - master:    actively under development
- - junkyard:  shelfed old project
 
 
