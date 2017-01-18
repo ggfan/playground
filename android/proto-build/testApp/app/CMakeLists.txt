@@ -30,16 +30,18 @@ ExternalProject_Add(download_proto
             GIT_REPOSITORY https://github.com/google/protobuf.git
             DOWNLOAD_DIR  ${CMAKE_SOURCE_DIR}/../third-party/proto-buf/proto-src
 #            DOWNLOAD_NAME
+            UPDATE_COMMAND ""
+            PATCH_COMMAND ""
             CONFIGURE_COMMAND ""
             BUILD_COMMAND ""
-            LOG_CONFIGURE 1
+            LOG_CONFIGURE 0
             BUILD_ALWAYS 1
             LOG_BUILD    1
             INSTALL_COMMAND "")
 
 add_custom_command(TARGET native-lib
                    PRE_BUILD
-                   DEPENDS download-proto
+                   DEPENDS download_proto
                    COMMAND /bin/bash ${CMAKE_SOURCE_DIR}/../third-party/proto-buf/scripts/build_proto_android.sh
                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/../third-party/proto-buf/scripts)
 

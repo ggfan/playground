@@ -15,7 +15,7 @@ CUR_DIR=$(cd $(dirname $0); pwd -P)
 PROTO_ROOT=$(cd ${CUR_DIR}/..; pwd -P)
 PROTO_BUILD="${PROTO_ROOT}/proto-bin"
 
-if [ -d ${PROTO_BUILD}/lib && -f ${PROTO_BUILD}/lib/libprotobuf.a ]
+if [ -d ${PROTO_BUILD}/lib ] && [ -f ${PROTO_BUILD}/lib/libprotobuf.a ]
     then
         echo  "proto already existing for android, exiting"
         exit 0
