@@ -80,6 +80,11 @@ export CXX="${cc_prefix} ${HOST_TYPE}-g++ --sysroot=${SYSROOT}"
 export LD="${cc_prefix} ${HOST_TYPE}-ld --sysroot=${SYSROOT}"
 export LDFLAGS="-L${SYSROOT}/usr/lib"
 
+echo ===========debuggging==============
+which ar
+echo ===========debugging end===========
+
+ 
 # we are using gnustl_static/gnustl_shared
 export CXXSTL=\
 "${ANDROID_NDK_HOME}/sources/cxx-stl/gnu-libstdc++/4.9/libs/${ANDROID_ABI_TYPE}"
@@ -99,5 +104,9 @@ export CXXSTL=\
 
 make  -j ${HOST_CPU_COUNT}
 make install
+echo ===========debuggging==============
+which ar
+echo ===========debugging end===========
+
 popd
 
