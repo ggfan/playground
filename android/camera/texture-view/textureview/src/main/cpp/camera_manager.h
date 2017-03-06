@@ -29,6 +29,10 @@ enum class CaptureSessionState:int32_t {
     CLOSED,      // session is closed(by itself or a new session evicts)
     MAX_STATE
 };
+struct rRect {
+    int32_t w;
+    int32_t h;
+};
 
 class CameraId;
 class NativeCamera {
@@ -36,6 +40,8 @@ class NativeCamera {
     ACameraManager *cameraMgr_;
     std::map<std::string, CameraId> cameras_;
     std::string activeCameraId_;
+    uint32_t cameraFacing_;
+    uint32_t cameraOrientation_;
     ACameraManager_AvailabilityCallbacks mgrListener_;
     ACameraDevice_stateCallbacks cameraListener_;
     ACaptureSessionOutputContainer* outputContainer_;
@@ -46,13 +52,19 @@ class NativeCamera {
     ACaptureRequest *captureRequest_;
     ACameraOutputTarget* outputTarget_;
 
-    ANativeWindow* nativeWindow_;
+    ANativeWindow* outputWindow_;
 
   public:
 
     explicit NativeCamera(ANativeWindow* app);
+    explicit NativeCamera(void);
+
     ~NativeCamera();
     void EnumerateCamera(void);
+    bool GetSensorOrientation(int32_t* facing, int32_t* angle);
+    void CreateSession(ANativeWindow *outputWindow);
+    rRect GetCompatibleSize( rRect size);
+
     void OnCameraStatusChanged(const char* id, bool available);
     void OnDeviceStateChanges(ACameraDevice* dev);
     void OnDeviceErrorChanges(ACameraDevice* dev, int err);

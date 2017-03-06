@@ -20,6 +20,7 @@
 
 #include <camera/NdkCameraManager.h>
 #include <camera/NdkCameraMetadata.h>
+#include <media/NdkImage.h>
 #include "camera_manager.h"
 #include "utils/native_debug.h"
 #include "camera_utils.h"
@@ -60,7 +61,7 @@ void OnSessionActive(void* ctx, ACameraCaptureSession *ses) {
 }
 
 NativeCamera::NativeCamera(ANativeWindow* win) :
-                  nativeWindow_(win),
+                  outputWindow_(win),
                   cameraMgr_(nullptr),
                   activeCameraId_(""),
                   outputContainer_(nullptr),
@@ -92,14 +93,14 @@ NativeCamera::NativeCamera(ANativeWindow* win) :
                         &cameraListener_, &cameras_[activeCameraId_].device_));
 
     // Create output from this app's ANativeWindow, and add into output container
-    ANativeWindow_acquire(nativeWindow_);
+    ANativeWindow_acquire(outputWindow_);
     CALL_CONTAINER(create(&outputContainer_));
-    CALL_OUTPUT(create(nativeWindow_, &output_));
+    CALL_OUTPUT(create(outputWindow_, &output_));
     CALL_CONTAINER(create(&outputContainer_));
     CALL_CONTAINER(add(outputContainer_, output_));
 
     // Create output target from the same ANativeWindow, add it into captureRequest
-    CALL_TARGET(create(nativeWindow_, &outputTarget_));
+    CALL_TARGET(create(outputWindow_, &outputTarget_));
     CALL_DEV(createCaptureRequest(cameras_[activeCameraId_].device_,
                                   TEMPLATE_PREVIEW, &captureRequest_));
     CALL_REQUEST(addTarget(captureRequest_, outputTarget_));
@@ -117,6 +118,69 @@ NativeCamera::NativeCamera(ANativeWindow* win) :
                                   &captureSession_));
 }
 
+NativeCamera::NativeCamera(void) :
+    outputWindow_(nullptr),
+    cameraMgr_(nullptr),
+    activeCameraId_(""),
+    outputContainer_(nullptr),
+    captureSessionState_(CaptureSessionState::MAX_STATE),
+    cameraOrientation_(0) {
+
+    cameras_.clear();
+    cameraMgr_ = ACameraManager_create();
+    ASSERT(cameraMgr_, "Failed to create cameraManager");
+
+    // Pick up a back-facing camera to preview
+    EnumerateCamera();
+    ASSERT(activeCameraId_.size(), "Unknown ActiveCameraIdx");
+
+    mgrListener_ =  {
+        .context = this,
+        .onCameraAvailable = ::OnCameraAvailable,
+        .onCameraUnavailable = ::OnCameraUnavailable,
+    };
+    CALL_MGR(registerAvailabilityCallback(cameraMgr_,
+                                          &mgrListener_));
+
+    // Create camera device for the selected Camera device
+    cameraListener_ = {
+        .context = this,
+        .onDisconnected = ::OnDeviceStateChanges,
+        .onError = ::OnDeviceErrorChanges,
+    };
+    CALL_MGR(openCamera(cameraMgr_, activeCameraId_.c_str(),
+                        &cameraListener_, &cameras_[activeCameraId_].device_));
+
+}
+
+void NativeCamera::CreateSession(ANativeWindow* outputWindow) {
+  // Create output from this app's ANativeWindow, and add into output container
+  outputWindow_ = outputWindow;
+  ANativeWindow_acquire(outputWindow_);
+  CALL_CONTAINER(create(&outputContainer_));
+  CALL_OUTPUT(create(outputWindow_, &output_));
+  CALL_CONTAINER(create(&outputContainer_));
+  CALL_CONTAINER(add(outputContainer_, output_));
+
+  // Create output target from the same ANativeWindow, add it into captureRequest
+  CALL_TARGET(create(outputWindow_, &outputTarget_));
+  CALL_DEV(createCaptureRequest(cameras_[activeCameraId_].device_,
+                                TEMPLATE_PREVIEW, &captureRequest_));
+  CALL_REQUEST(addTarget(captureRequest_, outputTarget_));
+
+  // Create a capture session for the given preview request
+  sessionListener_ = {
+      .context = this,
+      .onActive = ::OnSessionActive,
+      .onReady = ::OnSessionReady,
+      .onClosed = ::OnSessionClosed,
+  };
+  captureSessionState_ = CaptureSessionState::READY;
+  CALL_DEV(createCaptureSession(cameras_[activeCameraId_].device_,
+                                outputContainer_, &sessionListener_,
+                                &captureSession_));
+}
+
 NativeCamera::~NativeCamera() {
 
     ACameraCaptureSession_close(captureSession_);
@@ -128,7 +192,7 @@ NativeCamera::~NativeCamera() {
     ACaptureSessionOutputContainer_free(outputContainer_);
     ACaptureSessionOutput_free(output_);
 
-    ANativeWindow_release(nativeWindow_);
+    ANativeWindow_release(outputWindow_);
 
     for (auto &cam: cameras_) {
         if (cam.second.device_) {
@@ -142,6 +206,130 @@ NativeCamera::~NativeCamera() {
         ACameraManager_delete(cameraMgr_);
         cameraMgr_ = nullptr;
     }
+}
+
+/*
+ * 1) find the exactly the one to use, which is relating to the orientation of camera too
+ * 2) find the one that matches ( half-size or the same aspect ratio )
+ * 3) 640-480 as last resort
+ * ACAMERA_SCALER_AVAILABLE_STREAM_CONFIGURATIONS
+ */
+class DisplaySize {
+public :
+    DisplaySize(int32_t w, int32_t h) :w_(w), h_(h), portrait_(false) {
+        if (h > w) {
+            // make it landscape
+            w_ = h;
+            h_ = w;
+            portrait_ = true;
+        }
+    }
+    DisplaySize(const DisplaySize& other) {
+        w_ = other.w_;
+        h_ = other.h_;
+        portrait_ = other.portrait_;
+    }
+
+    DisplaySize(void){
+        w_ = 0;
+        h_ = 0;
+        portrait_ = false;
+    }
+    DisplaySize& operator= (const DisplaySize& other) {
+        w_ = other.w_;
+        h_ = other.h_;
+        portrait_ = other.portrait_;
+
+        return (*this);
+    }
+
+    bool IsSameRatio(DisplaySize& other) {
+        return (w_ * other.h_ == h_ * other.w_);
+    }
+    bool operator >(DisplaySize& other) {
+        return (w_ >= other.w_ & h_ >= other.h_);
+    }
+    bool operator ==(DisplaySize& other) {
+        return (w_ == other.w_ && h_ == other.h_ &&
+                portrait_ == other.portrait_);
+    }
+    DisplaySize operator -(DisplaySize &other) {
+        DisplaySize delta(w_ - other.w_, h_ - other.h_);
+        return delta;
+    }
+    void Flip(void) {
+        portrait_ = !portrait_;
+    }
+    bool IsPortrait(void) { return  portrait_; }
+    int32_t width(void) {return w_;}
+    int32_t height(void) { return h_;}
+    int32_t org_width(void) { return (portrait_ ? h_ : w_); }
+    int32_t org_height(void) { return (portrait_ ? w_ : h_); }
+
+private:
+    int32_t w_, h_;
+    bool portrait_;
+};
+/*
+ * find a compatible camera modes:
+ *    1) the same aspect ration as the native display window, which should be a
+ *       rotated version of the phisical device
+ *    2) the smallest resolution in the camera mode list
+ * This to minimize the later Color space conversion workload.
+ */
+rRect NativeCamera::GetCompatibleSize(rRect requestSize) {
+
+    DisplaySize disp(requestSize.w, requestSize.h);
+    bool bNeedFlip = false;
+    if (cameraOrientation_ == 90 || cameraOrientation_ == 270) {
+        bNeedFlip = true;
+    }
+
+    if (bNeedFlip) {
+        disp.Flip();
+    }
+
+    ACameraMetadata* metadata;
+    CALL_MGR(getCameraCharacteristics(cameraMgr_, activeCameraId_.c_str(),
+                                      &metadata));
+    ACameraMetadata_const_entry entry;
+    CALL_METADATA(getConstEntry(metadata,
+                                ACAMERA_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
+                                &entry));
+    // format of the data: format, width, height, input?, type int32
+    bool foundIt = false;
+    DisplaySize foundRes(4000, 4000);
+
+    for (int i = 0; i < entry.count; ++i) {
+        int32_t input = entry.data.i32[i*4 + 3];
+        int32_t format = entry.data.i32[i*4 + 0];
+        if (input || format != AIMAGE_FORMAT_YUV_420_888)
+            continue;
+
+        DisplaySize res(entry.data.i32[i * 4 + 1], entry.data.i32[i * 4 + 2]);
+        if (disp.IsSameRatio(res) && foundRes > res) {
+            foundIt = true;
+            foundRes = res;
+        }
+    }
+
+    rRect foundSize;
+    if (foundIt) {
+        foundSize.w = foundRes.org_width();
+        foundSize.h = foundRes.org_height();
+    } else {
+        LOGW("Did not find any compatible camera resolution, taking 640x480");
+        foundSize.w = 480;
+        foundSize.h = 640;
+    }
+
+    if (bNeedFlip) {
+      int tmp = foundSize.h;
+      foundSize.h = foundSize.w;
+      foundSize.w = tmp;
+    }
+    // resRec->format = AIMAGE_FORMAT_YUV_420_888;
+    return foundSize;
 }
 
 /*
@@ -189,6 +377,38 @@ void NativeCamera::EnumerateCamera() {
     ACameraManager_deleteCameraIdList(cameraIds);
 }
 
+/*
+ * GetSensorOrientation()
+ *     Retrieve current sensor orientation regarding to the phone device orientation
+ *     SensorOrientation is NOT settable.
+ */
+bool NativeCamera::GetSensorOrientation(int32_t* facing, int32_t* angle) {
+
+    if (!cameraMgr_) {
+        return false;
+    }
+
+    ACameraMetadata *metadataObj;
+    ACameraMetadata_const_entry face, orientation;
+    CALL_MGR(getCameraCharacteristics(cameraMgr_, activeCameraId_.c_str(),
+                                      &metadataObj));
+    CALL_METADATA(getConstEntry(metadataObj, ACAMERA_LENS_FACING, &face));
+    cameraFacing_ = static_cast<int32_t>(face.data.u8[0]);
+
+    CALL_METADATA(getConstEntry(metadataObj, ACAMERA_SENSOR_ORIENTATION,
+                                &orientation));
+
+    LOGI("====Current SENSOR_ORIENTATION: %8d", orientation.data.i32[0]);
+
+    ACameraMetadata_free(metadataObj);
+    cameraOrientation_ = orientation.data.i32[0];
+
+    if (facing )
+        *facing = cameraFacing_;
+    if (angle)
+        *angle = cameraOrientation_;
+    return true;
+}
 /*
  * OnCameraStatusChanged()
  *  handles Callback from ACameraManager

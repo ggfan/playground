@@ -45,62 +45,91 @@ class Engine {
     explicit Engine(JNIEnv* env, jobject surface) :
             surface_(surface),
             androidCamera_(nullptr),
-            cameraGranted_(true), env_(env) {}
+            env_(env),
+            requestHeight_(0),
+            requestWidth_(0),
+            rotation_ (0) { env->GetJavaVM(&vm_); }
+    explicit Engine(JNIEnv* env, jint w, jint h, jint rotation):
+            surface_(nullptr),
+            androidCamera_(nullptr),
+            env_ (env),
+            requestHeight_(h),
+            requestWidth_(w),
+            rotation_ (rotation) { env->GetJavaVM(&vm_);}
+
     ~Engine() { DeleteCamera(); }
 
     ANativeWindow* getNativeWin(void) {
       return ANativeWindow_fromSurface(env_, surface_);
+//      JNIEnv *env;
+//      vm_->AttachCurrentThread(&env, NULL);
+//      ANativeWindow* window = ANativeWindow_fromSurface(env, surface_);
+//      vm_->DetachCurrentThread();
+//      return window;
     }
-    void RequestCameraPermission();
-    void UpdateCameraPermission(jboolean granted);
-    bool isCameraGranted(void) { return cameraGranted_; }
+
     void CreateCamera(void);
+    void CreateCameraSession(jobject surface) {
+      surface_ = surface;
+      androidCamera_->CreateSession(getNativeWin());
+    }
+
+    void StartPreview(void) {
+      if (androidCamera_) {
+        androidCamera_->Animate();
+      }
+    }
+
     void DeleteCamera(void);
-    void OnDoubleTap(void);
+    void OnDoubleTap(void) {
+      StartPreview();
+    }
+    const rRect& GetCompatibleCameraRes() const {
+      return compatibleCameraRes_;
+    }
 private:
     JNIEnv* env_;
+    JavaVM* vm_;
+    int rotation_;
     jobject surface_;
     bool cameraGranted_;
     NativeCamera * androidCamera_;
+    int32_t requestWidth_;
+    int32_t requestHeight_;
+    rRect   compatibleCameraRes_;
 };
-
-void Engine::UpdateCameraPermission(jboolean granted) {
-    cameraGranted_ = (granted != 0);
-}
 
 /*
  * Create a camera object for onboard BACK_FACING camera
  */
 void Engine::CreateCamera(void) {
-    // Camera needed to be requested at the run-time from Java SDK
-    // if Not-granted, do nothing.
-    if (!cameraGranted_ || !surface_) {
-        LOGW("Camera Sample requires Full Camera access");
-        return;
+  ASSERT(androidCamera_== nullptr, "CameraObject is already initialized");
+
+  androidCamera_ = new NativeCamera();
+  ASSERT(androidCamera_, "Failed to Create CameraObject");
+  int32_t facing = 0, angle = 0, imageRotation = 0;
+  if (androidCamera_->GetSensorOrientation(&facing, &angle)) {
+    if (facing == ACAMERA_LENS_FACING_FRONT) {
+      imageRotation = (angle + rotation_) % 360;
+      imageRotation = (360 - imageRotation) % 360;
+    } else {
+      imageRotation = (angle - rotation_ + 360) % 360;
     }
+  }
+  LOGI("Phone Rotation: %d, Present Rotation Angle: %d",
+       rotation_, imageRotation);
+  rRect in = {
+      .w = requestWidth_,
+      .h = requestHeight_,
+  };
+  compatibleCameraRes_ = androidCamera_->GetCompatibleSize(in);
 
-    ASSERT(androidCamera_== nullptr, "CameraObject is already initialized");
-
-    androidCamera_ = new NativeCamera(getNativeWin());
-
-    ASSERT(androidCamera_, "Failed to Create CameraObject");
 }
 
 void Engine::DeleteCamera(void) {
     if (androidCamera_) {
         delete androidCamera_;
         androidCamera_ = nullptr;
-    }
-}
-
-/*
- * Process Double Tap event from user:
- *      toggle the preview state ( start/pause )
- * The Tap event is defined by this app. Refer to ProcessAndroidInput()
- */
-void Engine::OnDoubleTap(void) {
-    if (androidCamera_) {
-        androidCamera_->Animate();
     }
 }
 
@@ -121,6 +150,25 @@ void* CreateCamera(void *ctx) {
     return nullptr;
 }
 
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_sample_surfaceview_ViewActivity_CreateCamera(JNIEnv *env, jobject instance, jint width,
+                                                      jint height, jint rotation) {
+  pEngineObj = new Engine(env, width, height, rotation);
+  pEngineObj->CreateCamera();
+
+  return reinterpret_cast<jlong>(pEngineObj);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_sample_surfaceview_ViewActivity_GetCameraCompatibleWidth(JNIEnv *env, jobject instance) {
+  return pEngineObj->GetCompatibleCameraRes().w;
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_sample_surfaceview_ViewActivity_GetCameraCompatibleHeight(JNIEnv *env, jobject instance) {
+  return pEngineObj->GetCompatibleCameraRes().h;
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_sample_surfaceview_ViewActivity_notifySurfaceTextureChanged(JNIEnv *env, jobject instance,
                                                                      jobject surface) {
@@ -139,13 +187,12 @@ Java_com_sample_surfaceview_ViewActivity_notifySurfaceTextureChanged(JNIEnv *env
 extern "C" JNIEXPORT void JNICALL
 Java_com_sample_surfaceview_ViewActivity_notifySurfaceTextureCreated(
     JNIEnv *env, jobject instance, jobject surface) {
-  pEngineObj = new Engine(env, surface);
-  ASSERT(pEngineObj, "Failed to get Engine Object");
 
 //  pthread_t notifyThread;
 //  int error = pthread_create(&notifyThread, nullptr, ::CreateCamera, pEngineObj);
 //  ASSERT(error == 0, "Create Starting Camera thread failed");
-  CreateCamera(pEngineObj);
+   pEngineObj->CreateCameraSession(surface);
+   pEngineObj->StartPreview();
 }
 
 extern "C" JNIEXPORT void JNICALL
