@@ -1,22 +1,33 @@
-package com.sample.surfaceview;
+/*
+ * Copyright (C) 2017 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.sample.textureview;
 
 import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
-import android.graphics.Canvas;
 import android.graphics.SurfaceTexture;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.view.Display;
-import android.view.Gravity;
 import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.WindowManager;
-import android.widget.FrameLayout;
 
 import junit.framework.Assert;
 
@@ -25,10 +36,7 @@ public class ViewActivity extends Activity
 		ActivityCompat.OnRequestPermissionsResultCallback {
 	private  TextureView textureView_;
 	private  int width_, height_;
-	private  boolean  cameraGranted_ = false;
-    private  boolean  startPending_ = false;
 	Surface  surface_ = null;
-	private  long nativeCamera_ = 0;
 	private  int cameraWidth_;
 	private  int cameraHeight_;
 
@@ -41,24 +49,16 @@ public class ViewActivity extends Activity
 		RequestCamera();
 	}
 
-	public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-		Log.i("Camera-Sample", "SurfaceTexture Available");
+	public void onSurfaceTextureAvailable(SurfaceTexture surface,
+										  int width, int height) {
 		surface.setDefaultBufferSize(cameraWidth_, cameraHeight_);
 		surface_ = new Surface(surface);
-		if (cameraGranted_) {
-			Log.i("Camera-Sample", "Starting Preview");
-			notifySurfaceTextureCreated(surface_);
-		} else {
-			startPending_ = true;
-		}
-
+		notifySurfaceTextureCreated(surface_);
 	}
 
-	public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-		// Notify native side after surface has been created
-		if (surface_ != null) {
-		    notifySurfaceTextureChanged(surface_);
-	    }
+	public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
+											int width, int height) {
+		// do nothing
 	}
 
 	public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
@@ -68,10 +68,7 @@ public class ViewActivity extends Activity
 	}
 
 	public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-		// Invoked every time there's a new Camera preview frame
-		// this is place to call NDK drawing things
-
-		Log.i("Sample", "calling the frames");
+		// do nothing: display could consume YUV format
 	}
 
 	private static final int PERMISSION_REQUEST_CODE_CAMERA = 1;
@@ -84,8 +81,7 @@ public class ViewActivity extends Activity
 					PERMISSION_REQUEST_CODE_CAMERA);
 			return;
 		}
-		cameraGranted_ = true;
-		CreateCameraPreviewEngine();
+		CreatePreviewEngine();
 	}
 
 	@Override
@@ -103,18 +99,17 @@ public class ViewActivity extends Activity
 		}
 
 		Assert.assertEquals(grantResults.length, 1);
-		cameraGranted_ = (grantResults[0] == PackageManager.PERMISSION_GRANTED);
-		if (cameraGranted_) {
-			CreateCameraPreviewEngine();
+		if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+			CreatePreviewEngine();
 		}
 	}
 
-	private void CreateCameraPreviewEngine() {
+	private void CreatePreviewEngine() {
 		int rotation = 90 * ((WindowManager)(getSystemService(WINDOW_SERVICE)))
 					.getDefaultDisplay()
 					.getRotation();
-		// create a new thread to create Camera
-		nativeCamera_ = CreateCamera(width_, height_, rotation);
+
+		CreateCamera(width_, height_, rotation);
 		cameraWidth_ = GetCameraCompatibleWidth();
 		cameraHeight_ = GetCameraCompatibleHeight();
 
@@ -125,7 +120,6 @@ public class ViewActivity extends Activity
 
 	}
 
-	private native void notifySurfaceTextureChanged(Surface surface);
 	private native void notifySurfaceTextureCreated(Surface surface);
 	private native void notifySurfaceTextureDestroyed(Surface surface);
 	/*
@@ -135,8 +129,6 @@ public class ViewActivity extends Activity
 	private native long CreateCamera(int width, int height, int rotation);
 	private native int  GetCameraCompatibleWidth();
 	private native int  GetCameraCompatibleHeight();
-	private native boolean CreateSession(long cameraEngine);
-	private native boolean StartPreview(long nativeCamera);
 
 	static {
 		System.loadLibrary("camera_view");

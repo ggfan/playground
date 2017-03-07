@@ -32,13 +32,7 @@
 #include "utils/native_debug.h"
 
 /*
- * Looks NDK missed this function prototype for platform above android-16
- * but it is inside the unified header, so this app will have to use the unified header
- */
-typedef ANativeWindow* (*SURFACETEXTURE_FP)(JNIEnv*, jobject);
-// extern "C" ANativeWindow* (*ANativeWindow_fromSurfaceTexture)(JNIEnv* env, jobject surfaceTexture);
-/*
- * Very simple application stub to manage camera and display for Preview
+ * Simple Preivew Engine
  */
 class Engine {
   public:
@@ -61,11 +55,6 @@ class Engine {
 
     ANativeWindow* getNativeWin(void) {
       return ANativeWindow_fromSurface(env_, surface_);
-//      JNIEnv *env;
-//      vm_->AttachCurrentThread(&env, NULL);
-//      ANativeWindow* window = ANativeWindow_fromSurface(env, surface_);
-//      vm_->DetachCurrentThread();
-//      return window;
     }
 
     void CreateCamera(void);
@@ -90,9 +79,8 @@ class Engine {
 private:
     JNIEnv* env_;
     JavaVM* vm_;
-    int rotation_;
+    int     rotation_;
     jobject surface_;
-    bool cameraGranted_;
     NativeCamera * androidCamera_;
     int32_t requestWidth_;
     int32_t requestHeight_;
@@ -139,64 +127,59 @@ void Engine::DeleteCamera(void) {
  */
 Engine *pEngineObj = nullptr;
 
-
-//ToDO:
-// 1) cache the global one env
-// 2) get it into a thread to start/stop
-// 3) find the right ration when creating camera session
-void* CreateCamera(void *ctx) {
-    reinterpret_cast<Engine*>(ctx)->CreateCamera();
-    reinterpret_cast<Engine*>(ctx)->OnDoubleTap();
-    return nullptr;
-}
-
+/*
+ * Interface functions to Java code
+ */
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_sample_surfaceview_ViewActivity_CreateCamera(JNIEnv *env, jobject instance, jint width,
-                                                      jint height, jint rotation) {
+Java_com_sample_textureview_ViewActivity_CreateCamera(
+        JNIEnv *env,
+        jobject instance,
+        jint width,
+        jint height,
+        jint rotation) {
+
   pEngineObj = new Engine(env, width, height, rotation);
   pEngineObj->CreateCamera();
 
   return reinterpret_cast<jlong>(pEngineObj);
 }
 
+/*
+ * Return Compatible preview camera resolution width
+ *    Backfacing camera, the lowest resolution with aspection ration
+ *    be same as display resolution
+ */
 extern "C" JNIEXPORT jint JNICALL
-Java_com_sample_surfaceview_ViewActivity_GetCameraCompatibleWidth(JNIEnv *env, jobject instance) {
+Java_com_sample_textureview_ViewActivity_GetCameraCompatibleWidth(
+    JNIEnv *env,
+    jobject instance) {
+
   return pEngineObj->GetCompatibleCameraRes().w;
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_com_sample_surfaceview_ViewActivity_GetCameraCompatibleHeight(JNIEnv *env, jobject instance) {
+Java_com_sample_textureview_ViewActivity_GetCameraCompatibleHeight(
+    JNIEnv *env,
+    jobject instance) {
+
   return pEngineObj->GetCompatibleCameraRes().h;
 }
 
+/*
+ * Start Preview with given surface
+ */
 extern "C" JNIEXPORT void JNICALL
-Java_com_sample_surfaceview_ViewActivity_notifySurfaceTextureChanged(JNIEnv *env, jobject instance,
-                                                                     jobject surface) {
-  delete pEngineObj;
-  pEngineObj = nullptr;
-
-  pEngineObj = new Engine(env, surface);
-  ASSERT(pEngineObj, "Failed to get Engine Object");
-
-//  pthread_t notifyThread;
-//  int error = pthread_create(&notifyThread, nullptr, ::CreateCamera, pEngineObj);
-//  ASSERT(error == 0, "Create Starting Camera thread failed");
-  CreateCamera(pEngineObj);
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_sample_surfaceview_ViewActivity_notifySurfaceTextureCreated(
+Java_com_sample_textureview_ViewActivity_notifySurfaceTextureCreated(
     JNIEnv *env, jobject instance, jobject surface) {
-
-//  pthread_t notifyThread;
-//  int error = pthread_create(&notifyThread, nullptr, ::CreateCamera, pEngineObj);
-//  ASSERT(error == 0, "Create Starting Camera thread failed");
    pEngineObj->CreateCameraSession(surface);
    pEngineObj->StartPreview();
 }
 
+/*
+ * Cleanup when surface is destroyed
+ */
 extern "C" JNIEXPORT void JNICALL
-Java_com_sample_surfaceview_ViewActivity_notifySurfaceTextureDestroyed(
+Java_com_sample_textureview_ViewActivity_notifySurfaceTextureDestroyed(
     JNIEnv *env, jobject instance, jobject surface) {
   delete pEngineObj;
   pEngineObj = nullptr;
