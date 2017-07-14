@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.nativeaudio;
+package com.example.sinewave;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -28,7 +28,12 @@ import android.widget.Button;
 
 
 public class NativeAudio extends Activity {
-    final int REPEAT_COUNT = 3;
+
+    //static final String TAG = "NativeAudio";
+    private static final int AUDIO_ECHO_REQUEST = 0;
+
+    static final int REPEAT_COUNT = 3;
+
     /** Called when the activity is first created. */
     @Override
     @TargetApi(17)
