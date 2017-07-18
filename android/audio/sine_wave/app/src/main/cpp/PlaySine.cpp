@@ -69,7 +69,7 @@ class SineGenerator*   sineGenerator = nullptr;
 std::atomic<bool>  playToneOn;
 
 // this callback handler is called every time a buffer finishes playing
-void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+void bqPlayerCallback2(SLAndroidSimpleBufferQueueItf bq, void *context)
 {
     assert(bq == bqPlayerBufferQueue);
     assert(NULL == context);
@@ -87,6 +87,23 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
     assert(SL_RESULT_SUCCESS == result);
 }
 
+void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+{
+  assert(bq == bqPlayerBufferQueue);
+  assert(NULL == context);
+
+  int16_t* buf = buffers[curBufIdx];
+  curBufIdx = (curBufIdx + 1) % kBufCount;
+  if (playToneOn) {
+    sineGenerator->render(buf, kChannelCount, samplesPerBuf);
+  } else {
+    memset(buf, 0, bufSizeInByte);
+  }
+  SLresult result;
+  result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue,
+                                           buf, bufSizeInByte);
+  assert(SL_RESULT_SUCCESS == result);
+}
 
 // create the engine and output mix objects
 extern "C" JNIEXPORT void JNICALL Java_com_example_sinewave_NativeAudio_createEngine(JNIEnv* env, jclass clazz)

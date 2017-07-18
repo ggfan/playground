@@ -210,7 +210,7 @@ jboolean Java_com_example_recording_NativeRecording_createAudioRecorder(JNIEnv* 
             NULL);
     assert(SL_RESULT_SUCCESS == result);
     (void)result;
-    samplesPerFrame = 256;  // samplesPerBurst;  // to be passed from caller
+    samplesPerFrame = samplesPerBurst;  // to be passed from caller
     for (int idx = 0; idx < kBufCount; idx++) {
       int32_t size = samplesPerFrame * channelCount * sizeof(int16_t);
       int16_t *buf = (int16_t*)malloc(size);
