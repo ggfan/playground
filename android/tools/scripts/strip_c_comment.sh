@@ -6,10 +6,11 @@
 #Tested on Mac
 # 03/29/2017
 
+API_LEVEL=26
 name=$1.clean.h
 
 sed /\#include/d $1 > $name
-cpp -nostdinc $name > $name.tmp
+cpp -D__ANDROID_API__=$API_LEVEL -nostdinc $name > $name.tmp
 sed /^$/d $name.tmp > $name
 sed -i '' s/#.*$// $name
 sed -i '' /^\ *$/d $name
