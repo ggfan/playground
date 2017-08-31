@@ -1,0 +1,40 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 26
+    buildToolsVersion "26.0.1"
+    defaultConfig {
+        applicationId "com.google.sample.hello_yasm"
+        minSdkVersion 23
+        targetSdkVersion 23
+        versionCode 1
+        versionName "1.0"
+        ndk {
+            abiFilters 'x86_64'
+        }
+        externalNativeBuild {
+            cmake {
+                cppFlags "-frtti -fexceptions -std=c++11 -fPIC"
+                arguments "-DANDROID_TOOLCHAIN=clang",
+                          "-DANDROID_STL=c++_static",
+                          "-DANDROID_PIE=ON"
+
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+}
+
+dependencies {
+    compile 'com.android.support.constraint:constraint-layout:1.0.2'
+}
