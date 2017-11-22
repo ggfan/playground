@@ -8,7 +8,7 @@ fi
 
 # Configure SDK/NDK locations so we do not depends on local.properties
 export ANDROID_HOME=$HOME/dev/sdk_current
-export ANDROID_NDK_HOME=$HOME/dev/android-ndk-r16-beta1
+export ANDROID_NDK_HOME=$HOME/dev/android-ndk-r16
 
 # configurations:
 #  temp file name to hold build result; it will be removed after build
@@ -16,7 +16,7 @@ export ANDROID_NDK_HOME=$HOME/dev/android-ndk-r16-beta1
 BUILD_RESULT_FILE=build_result.txt
 
 # Repo root directory
-NDK_SAMPLE_REPO=/Users/gfan/tmp/android-ndk
+NDK_SAMPLE_REPO=/Users/gfan/proj/ndk-test
 
 declare projects=(audio-echo
     bitmap-plasma
@@ -56,10 +56,10 @@ declare apks=(
     endless-tunnel/app/build/outputs/apk/app-debug.apk
     gles3jni/app/build/outputs/apk/app-debug.apk
     hello-gl2/app/build/outputs/apk/app-debug.apk
-    hello-jni/app/build/outputs/apk/app-arm7-debug.apk
+    hello-jni/app/build/outputs/apk/arm7/debug/app-arm7-debug.apk
     hello-jniCallback/app/build/outputs/apk/app-debug.apk
     hello-libs/app/build/outputs/apk/app-debug.apk
-    hello-neon/app/build/outputs/apk/app-arm7-debug.apk
+    hello-neon/app/build/outputs/apk/debug/app-debug.apk
     native-activity/app/build/outputs/apk/app-debug.apk
     native-audio/app/build/outputs/apk/app-debug.apk
     native-codec/app/build/outputs/apk/app-debug.apk
