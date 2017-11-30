@@ -34,11 +34,11 @@ Java_com_google_example_round_1trip_MainActivity_getPureNativeIncTime(JNIEnv *en
   long time = 0;
   int val = 0;
   volatile bool  result = false;
+  auto startTime = now_ns();
   for (jint i = 0; i  < iterations; i++) {
-    auto startTime = now_ns();
     val = testCall(val);
-    time += now_ns() - startTime;
   }
+  time += now_ns() - startTime;
   time /= iterations;
   __android_log_print(ANDROID_LOG_INFO, "Rount-trip",
                       "iteration = %d, time = %d", iterations, (int)time);
@@ -190,4 +190,25 @@ Java_com_google_example_round_1trip_MainActivity_passByValue(JNIEnv *env, jobjec
 
   appData.type_ = type;
 
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_google_example_round_1trip_MainActivity_getFieldTime(JNIEnv *env, jobject instance,
+                                                              jobject jniData, jlong iterations) {
+
+  long value  = 0;
+  jclass className;
+  jfieldID  fieldId;
+  long time = 0;
+  auto startTime = now_ns();
+  for (jlong idx = 0; idx < iterations; idx++) {
+    className = env->GetObjectClass(jniData);
+    fieldId = env->GetFieldID(className, "int1_", "I");
+  }
+  time = now_ns() - startTime;
+
+  value += env->GetIntField(jniData, fieldId);
+  time /= iterations;
+  return time;
 }

@@ -1,6 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        config {
+            keyAlias 'android-test-key'
+            keyPassword 'android'
+            storeFile file('/Users/gfan/keystore/android.jks')
+            storePassword 'android'
+        }
+    }
     compileSdkVersion 26
     defaultConfig {
         applicationId "com.google.example.round_trip"
@@ -29,7 +37,7 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'com.android.support:appcompat-v7:26.1.0'
     implementation 'com.android.support.constraint:constraint-layout:1.0.2'
     testImplementation 'junit:junit:4.12'

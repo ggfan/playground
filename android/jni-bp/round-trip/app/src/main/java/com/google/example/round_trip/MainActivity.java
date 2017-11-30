@@ -64,7 +64,10 @@ public class MainActivity extends AppCompatActivity {
         final TextView tv =  (TextView) findViewById(R.id.sample_text);
         new Thread(new Runnable() {
             public void run() {
-                final String msg = compareParameterPassing();  // compareCallTimes();
+                final String msg = compareCallTimes();
+                      // compareFieldExpense();
+                      // compareParameterPassing();
+                      // compareCallTimes();
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -80,20 +83,20 @@ public class MainActivity extends AppCompatActivity {
         // Example of a call to a native method and get the
         // round trip time.
         long jniIncTime  = 0;
+        long startTime = System.nanoTime();
         for (int i = 0; i < ITERATIONS; i++) {
-            long startTime = System.nanoTime();
             counter = jniInc(counter);
-            jniIncTime += System.nanoTime() - startTime;
         }
+        jniIncTime += System.nanoTime() - startTime;
         jniIncTime /= ITERATIONS;
 
         counter = 0;
         long javaIncTime = 0;
+        startTime = System.nanoTime();
         for (int i = 0; i < ITERATIONS; i++) {
-            long startTime = System.nanoTime();
             counter = javaInc(counter);
-            javaIncTime += System.nanoTime() - startTime;
         }
+        javaIncTime += System.nanoTime() - startTime;
         javaIncTime /= ITERATIONS;
 
         long nativeIncTime = getPureNativeIncTime(ITERATIONS);
@@ -123,22 +126,23 @@ public class MainActivity extends AppCompatActivity {
 
         long objTime = 0;
         long valTime = 0;
+        long startTime = System.nanoTime();
         for (int i = 0; i < ITERATIONS; i++) {
-            long startTime = System.nanoTime();
             passByValue(jniData.int1_, jniData.int2_, jniData.int3_,
-                        jniData.long1_, jniData.long2_, jniData.long3_,
-                        jniData.float1_, jniData.float2_, jniData.float3_,
-                        jniData.type_);
-            valTime += System.nanoTime() - startTime;
-
-            startTime = System.nanoTime();
-            passByObject(jniData, true);
-            objTime += System.nanoTime() - startTime;
-
+                    jniData.long1_, jniData.long2_, jniData.long3_,
+                    jniData.float1_, jniData.float2_, jniData.float3_,
+                    jniData.type_);
         }
+        valTime += System.nanoTime() - startTime;
+        valTime /= ITERATIONS;
+
+        startTime = System.nanoTime();
+        for (int i = 0; i < ITERATIONS; i++) {
+            passByObject(jniData, false);
+        }
+        objTime += System.nanoTime() - startTime;
 
         objTime /= ITERATIONS;
-        valTime /= ITERATIONS;
         String msg = "passByObjectTime: " + objTime + "\npassByValueTime: " + valTime;
 
         return msg;
@@ -149,4 +153,35 @@ public class MainActivity extends AppCompatActivity {
                                    long longVal1, long longVal2, long longVal3,
                                    float floatVal1, float floatVal2, float floatVal3,
                                    char type);
+
+    private String compareFieldExpense() {
+        Parameters jniData = new Parameters(1, 2, 3,
+                100, 200, 300,
+                10.5f, 20.5f, 30.5f, 'a'
+        );
+        long getFieldTime = getFieldTime(jniData, ITERATIONS);
+
+        return "getFieldExpense: " + getFieldTime;
+    }
+
+    public native long getFieldTime(Parameters jniData,long iterations);
+
 }
+
+/*
+   Execution Time on Pixel XL ( in ns ):
+     1) call time
+         jniCall: 224
+         javaVall: 1
+         nativeCall: 0
+
+     2) passing parameter list
+         pass by objects:  6972
+         pass by value:    260
+
+         pass by objects + class/field caching: 1792
+         pass by value:   216
+
+     3) get classID and fieldID on:
+         854ns
+ */
