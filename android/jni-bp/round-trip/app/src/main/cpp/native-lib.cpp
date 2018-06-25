@@ -13,6 +13,15 @@ static long now_ns(void) {
   return 1000000000 * res.tv_sec + res.tv_nsec;
 }
 
+static uint64_t now_ns2(void) {
+
+  struct timespec res;
+  clock_gettime(CLOCK_REALTIME, &res);
+  uint64_t retVal = (uint64_t) 1000000000;
+  retVal = retVal * res.tv_sec + res.tv_nsec;
+  return retVal;
+}
+
 extern "C"
 JNIEXPORT jint
 JNICALL
@@ -34,11 +43,11 @@ Java_com_google_example_round_1trip_MainActivity_getPureNativeIncTime(JNIEnv *en
   long time = 0;
   int val = 0;
   volatile bool  result = false;
-  auto startTime = now_ns();
+  auto startTime = now_ns2();
   for (jint i = 0; i  < iterations; i++) {
     val = testCall(val);
   }
-  time += now_ns() - startTime;
+  time += now_ns2() - startTime;
   time /= iterations;
   __android_log_print(ANDROID_LOG_INFO, "Rount-trip",
                       "iteration = %d, time = %d", iterations, (int)time);
