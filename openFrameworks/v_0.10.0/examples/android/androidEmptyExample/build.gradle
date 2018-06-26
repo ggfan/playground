@@ -8,10 +8,15 @@ buildscript {
 
     repositories {
         jcenter()
+        maven {
+            // All of React Native (JS, Android binaries) is installed from npm
+            url "/usr/local/google/home/gfan/tmp/test/node_modules/react-native/android"
+        }
     }
     dependencies {
         // Using the gradle-experimental version that supports c++
         classpath 'com.android.tools.build:gradle-experimental:0.9.3'
+        classpath 'com.android.tools.build:gradle:2.3.3'
     }
 }
 
@@ -19,6 +24,7 @@ allprojects {
     repositories {
         jcenter()
     }
+
 }
 
 apply plugin: 'com.android.model.application'
@@ -130,10 +136,12 @@ model {
     }
 }
 
+// apply plugin: 'com.android.application'
 
 dependencies {
     addonJavaDependencies(ofRoot()).each { dep ->
         compile(project(path: dep[1] ))
     }
     compile project(path: ':ofAndroidLib')
+    compile "com.facebook.react:react-native:+"
 }
