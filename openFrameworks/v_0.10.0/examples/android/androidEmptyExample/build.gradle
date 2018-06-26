@@ -27,37 +27,77 @@ allprojects {
 
 }
 
-apply plugin: 'com.android.model.application'
+apply plugin: 'com.android.application'
+// apply plugin: 'com.android.model.application'
 
-model {
     android {
         // openFrameworks currently only supports compiling against SDK 19
         compileSdkVersion = 25
-        buildToolsVersion = "25.0.3"
+        buildToolsVersion = 25
 
-        defaultConfig.with {
-            minSdkVersion.apiLevel    = 19
-            targetSdkVersion.apiLevel = 25
+        defaultConfig {
+            minSdkVersion    19
+            targetSdkVersion 25
             versionCode     =  1
             versionName     = "1.0"
+            ndk.abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+            externalNativeBuild.cmake {
+                arguments '-DANDROID_TOOLCHAIN=gcc', '-DANDROID_STL=c++_static', '-DANDROID_PLATFORM=android-19'
+                cppFlags "-v"
+            }
         }
-    }
+        sourceSets.main {
+            assets.srcDirs = ['bin/data'] + addonData(ofRoot())
+            manifest.srcFile "./AndroidManifest.xml"
+            res.srcDirs = ["res"]
+            java.srcDirs = ['srcJava']
+            aidl.srcDirs = ['srcJava']
+            renderscript.srcDirs = ['srcJava']
 
-    android.ndk {
-        moduleName = ofAppModuleName()
-        toolchain  = buildToolchain()
-        stl        = compilerStl()
-        platformVersion = "19"
-    }
+        }
 
-    android.sources {
+        lintOptions {
+            abortOnError  = false
+        }
+
+        buildTypes {
+            release {
+                minifyEnabled = false
+            }
+        }
+
+        externalNativeBuild.cmake {
+            path "./src/CMakeLists.txt"
+        }
+        android.productFlavors {
+            getAbis().each { abi ->
+                create(getFlavorName(abi)) {
+                    ndk {
+                        abiFilters abi
+
+                        // cppFlags coreCppFlags(abi, ofRoot())
+                        // cppFlags addonCppFlags(abi, ofRoot())
+
+//                        ldLibs.addAll(coreLdLibs(abi, ofRoot()))
+//                        ldLibs.addAll(addonLdLibs(abi, ofRoot()))
+
+//                        ldFlags.addAll(coreLdFlags(abi, ofRoot()))
+//                        ldFlags.addAll(addonLdFlags(abi, ofRoot()))
+                    }
+                    externalNativeBuild.cmake {
+                        cppFlags +=coreCppFlags(abi, ofRoot())
+                        cppFlags +=addonCppFlags(abi, ofRoot())
+                    }
+                }
+            }
+        }
+
+    }
+/*    android.sources {
         main {
             jni {
                 source {
-                    srcDirs= appSrcDirs(ofRoot())
-
-                    includes = srcIncludes(ofRoot())
-                    excludes = srcExcludes(ofRoot())
+                                 excludes = srcExcludes(ofRoot())
                 }
 
                 // Link to openFrameworks
@@ -102,16 +142,7 @@ model {
                 }
             }
         }
-    }
 
-    android.lintOptions {
-        abortOnError  = false
-    }
-
-    android.buildTypes {
-        release {
-            minifyEnabled = false
-        }
     }
 
     // Setup the different types of flavors (arm / x86),
@@ -134,14 +165,18 @@ model {
             }
         }
     }
-}
-
+*/
 // apply plugin: 'com.android.application'
 
 dependencies {
     addonJavaDependencies(ofRoot()).each { dep ->
         compile(project(path: dep[1] ))
     }
+    srcIncludes(ofRoot()).each { flag ->
+        printLn flag[1]
+    }
+
     compile project(path: ':ofAndroidLib')
+//    compile project(':openFrameworksProject')
     compile "com.facebook.react:react-native:+"
 }
