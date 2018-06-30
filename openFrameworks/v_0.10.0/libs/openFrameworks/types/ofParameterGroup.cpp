@@ -348,7 +348,7 @@ void ofParameterGroup::fromString(const string & name){
 
 
 const ofAbstractParameter & ofParameterGroup::get(const string& name) const{
-	map<string,std::size_t>::const_iterator it = obj->parametersIndex.find(escape(name));
+	std::map<string,std::size_t>::const_iterator it = obj->parametersIndex.find(escape(name));
 	std::size_t index = it->second;
 	return get(index);
 }
@@ -367,7 +367,7 @@ const ofAbstractParameter & ofParameterGroup::operator[](std::size_t pos) const{
 }
 
 ofAbstractParameter & ofParameterGroup::get(const string& name){
-	map<string,std::size_t>::const_iterator it = obj->parametersIndex.find(escape(name));
+	std::map<string,std::size_t>::const_iterator it = obj->parametersIndex.find(escape(name));
 	std::size_t index = it->second;
 	return get(index);
 }

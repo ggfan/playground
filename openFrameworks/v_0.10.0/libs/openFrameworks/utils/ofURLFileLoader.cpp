@@ -190,7 +190,7 @@ ofHttpResponse ofURLFileLoaderImpl::handleRequest(const ofHttpRequest & request)
 	if(request.contentType!=""){
 		headers = curl_slist_append(headers, ("Content-Type: " + request.contentType).c_str());
 	}
-	for(map<string,string>::const_iterator it = request.headers.cbegin(); it!=request.headers.cend(); it++){
+	for(std::map<string,string>::const_iterator it = request.headers.cbegin(); it!=request.headers.cend(); it++){
 		headers = curl_slist_append(headers, (it->first + ": " +it->second).c_str());
 	}
 

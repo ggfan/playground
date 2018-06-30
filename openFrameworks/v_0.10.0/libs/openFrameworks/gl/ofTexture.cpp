@@ -122,8 +122,8 @@ void ofDisableArbTex(){
 }
 
 
-static map<GLuint,int> & getTexturesIndex(){
-	static map<GLuint,int> * textureReferences = new map<GLuint,int>;
+static std::map<GLuint,int> & getTexturesIndex(){
+	static std::map<GLuint,int> * textureReferences = new std::map<GLuint,int>;
 	return *textureReferences;
 }
 

@@ -241,7 +241,7 @@ def addonJavaDependencies(root,abi=""){
 def javaDependencies(ofRoot){
     def ret = []
     ret += [[ofRoot+'addons/ofxAndroid/ofAndroidLib', ':ofAndroidLib']]
-    ret += [[ofRoot+'libs/openFrameworksCompiled/project/android', ':openFrameworksProject']]
+//    ret += [[ofRoot+'libs/openFrameworksCompiled/project/android', ':openFrameworksProject']]
     return ret
 }
 
@@ -297,12 +297,7 @@ def coreCppFlags(abi, ofRoot){
 
     def ret = ["-std=c++14",
             "-Wall",
-            "-frtti",
-            "-fexceptions",
-            "-nostdlib ",
             "-fno-short-enums",
-            "-ffunction-sections",
-            "-fdata-sections",
             "-I${file(ofSource)}".toString(),
             "-I${file(ofSource+"/3d")}".toString(),
             "-I${file(ofSource+"/app")}".toString(),

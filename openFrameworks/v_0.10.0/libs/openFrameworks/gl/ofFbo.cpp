@@ -164,8 +164,8 @@ bool ofFboSettings::operator!=(const ofFboSettings & other){
 }
 
 //--------------------------------------------------------------
-static map<GLuint,int> & getIdsFB(){
-	static map<GLuint,int> * idsFB = new map<GLuint,int>;
+static std::map<GLuint,int> & getIdsFB(){
+	static std::map<GLuint,int> * idsFB = new std::map<GLuint,int>;
 	return *idsFB;
 }
 
@@ -193,8 +193,8 @@ static void releaseFB(GLuint id){
 }
 
 //--------------------------------------------------------------
-static map<GLuint,int> & getIdsRB(){
-	static map<GLuint,int> * idsRB = new map<GLuint,int>;
+static std::map<GLuint,int> & getIdsRB(){
+	static std::map<GLuint,int> * idsRB = new std::map<GLuint,int>;
 	return *idsRB;
 }
 

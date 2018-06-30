@@ -39,13 +39,16 @@ model {
                                     "**/ofGstUtils.cpp",
                                     "**/ofGstVideoGrabber.cpp",
                                     "**/ofGstVideoPlayer.cpp",
+
                                     "**/ofAppGlutWindow.cpp",
                                     "**/ofAppEGLWindow.cpp",
                                     "**/ofAppGLFWWindow.cpp",
+
                                     "**/ofCairoRenderer.cpp",
                                     "**/ofFmodSoundPlayer.cpp",
                                     "**/ofOpenALSoundPlayer.cpp",
                                     "**/ofRtAudioSoundStream.cpp",
+
                                     "**/glew/**/*",
                                     "**/videoInput/**/*",
                                     "**/fmodex/**/*",
