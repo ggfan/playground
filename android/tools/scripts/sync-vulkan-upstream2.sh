@@ -44,7 +44,7 @@ rm -f .appveyer.yml  .travis.yml
 
 # regenerate all project files
 pushd  API-Samples
-cmake -DANDROID=ON
+cmake -DANDROID=ON -DABI_NAME=armeabi-v7a
 rm -fr CMakeFiles Makefile CMakeCache.txt
 popd
 
