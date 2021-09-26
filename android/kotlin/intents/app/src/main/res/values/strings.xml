@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">intents</string>
+    <string name="parent_name">initiator</string>
+</resources>
