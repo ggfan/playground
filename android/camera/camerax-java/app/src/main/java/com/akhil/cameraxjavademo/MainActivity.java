@@ -11,6 +11,7 @@ import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
+import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 // import androidx.camera.extensions.HdrImageCaptureExtender;
 import androidx.camera.extensions.ExtensionMode;
@@ -62,6 +63,8 @@ public class MainActivity extends AppCompatActivity {
     PreviewView mPreviewView;
     ImageView captureImage;
 
+    private int frameCount = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -97,8 +100,26 @@ public class MainActivity extends AppCompatActivity {
         }, ContextCompat.getMainExecutor(this));
     }
 
+    @SuppressLint({"UnsafeOptInUsageError"})
+    Boolean isBackCameraLevel3Device(ProcessCameraProvider cameraProvider) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N)
+            return Boolean.FALSE;
+
+        int hardwareLevel = -1;
+
+        @SuppressLint("RestrictedApi") List<CameraInfo> cameraInfos = CameraSelector.DEFAULT_BACK_CAMERA
+                .filter(cameraProvider.getAvailableCameraInfos());
+
+        if(!cameraInfos.isEmpty()) {
+            hardwareLevel = Camera2CameraInfo
+                    .from(cameraInfos.get(0))
+                    .getCameraCharacteristic(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
+        }
+        return (hardwareLevel == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3);
+    }
     void bindPreview(@NonNull ProcessCameraProvider cameraProvider) throws ExecutionException, InterruptedException {
 
+        Log.i(TAG, "Is Level 3 Camera: " + isBackCameraLevel3Device(cameraProvider).toString());
         Preview preview = new Preview.Builder()
                 .build();
 
@@ -122,11 +143,26 @@ public class MainActivity extends AppCompatActivity {
             cameraSelector = extensionsManager.getExtensionEnabledCameraSelector(cameraProvider, cameraSelector, mode);
             Log.i(TAG, "Extension " + mode + " is supported");
         } else {
-           Log.i(TAG, "Extension " + mode + " is not supported");
+            Log.i(TAG, "Extension " + mode + " is not supported");
         }
 
         ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
                 .build();
+        imageAnalysis.setAnalyzer(executor, new ImageAnalysis.Analyzer() {
+            int frameCount = 0;
+            long timeStamp  = System.currentTimeMillis();
+            @Override
+            public void analyze(@NonNull ImageProxy imageProxy) {
+                frameCount++;
+                if (frameCount == 100) {
+                    long time = timeStamp;
+                    timeStamp = System.currentTimeMillis();
+                    Log.i(TAG, "analyzer frameRate = " + (frameCount * 1000.0f / (timeStamp - time)));
+                    frameCount = 0;
+                }
+                imageProxy.close();
+            }
+        });
 
         ImageCapture.Builder builder = new ImageCapture.Builder();
 
@@ -138,7 +174,7 @@ public class MainActivity extends AppCompatActivity {
 
         Camera camera = null;
         try {
-            cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview, imageAnalysis, imageCapture);
+            cameraProvider.bindToLifecycle((LifecycleOwner)this, cameraSelector, preview, imageCapture, imageAnalysis);
         } catch (Exception e) {
             Log.e(TAG, e.getLocalizedMessage());
         }
