@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.camera2.interop.Camera2CameraInfo;
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
@@ -49,6 +50,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -64,6 +66,20 @@ public class MainActivity extends AppCompatActivity {
     ImageView captureImage;
 
     private int frameCount = 0;
+    @androidx.annotation.OptIn(markerClass = ExperimentalCamera2Interop.class)
+    boolean isBackCameraLevel3Device(@NonNull ProcessCameraProvider cameraProvider) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            List<CameraInfo> filteredCameraInfos = CameraSelector.DEFAULT_BACK_CAMERA
+                    .filter(cameraProvider.getAvailableCameraInfos());
+            if (!filteredCameraInfos.isEmpty()) {
+                return Objects.equals(
+                        Camera2CameraInfo.from(filteredCameraInfos.get(0)).getCameraCharacteristic(
+                                CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL),
+                        CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3);
+            }
+        }
+        return false;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,26 +116,9 @@ public class MainActivity extends AppCompatActivity {
         }, ContextCompat.getMainExecutor(this));
     }
 
-    @SuppressLint({"UnsafeOptInUsageError"})
-    Boolean isBackCameraLevel3Device(ProcessCameraProvider cameraProvider) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N)
-            return Boolean.FALSE;
-
-        int hardwareLevel = -1;
-
-        @SuppressLint("RestrictedApi") List<CameraInfo> cameraInfos = CameraSelector.DEFAULT_BACK_CAMERA
-                .filter(cameraProvider.getAvailableCameraInfos());
-
-        if(!cameraInfos.isEmpty()) {
-            hardwareLevel = Camera2CameraInfo
-                    .from(cameraInfos.get(0))
-                    .getCameraCharacteristic(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
-        }
-        return (hardwareLevel == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3);
-    }
     void bindPreview(@NonNull ProcessCameraProvider cameraProvider) throws ExecutionException, InterruptedException {
 
-        Log.i(TAG, "Is Level 3 Camera: " + isBackCameraLevel3Device(cameraProvider).toString());
+        Log.i(TAG, "Is Level 3 Camera: " + isBackCameraLevel3Device(cameraProvider));
         Preview preview = new Preview.Builder()
                 .build();
 
