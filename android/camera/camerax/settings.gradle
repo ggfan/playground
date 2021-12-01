@@ -1,0 +1,4 @@
+rootProject.name = "camerax"
+include ':java-app'
+include ':device-selector'
+
