@@ -1,4 +1,4 @@
-package com.google.android.sample
+package com.google.android.preview
 
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
@@ -16,10 +16,8 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.camera.core.*
-import androidx.camera.core.ImageAnalysis.STRATEGY_BLOCK_PRODUCER
-import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
 import androidx.camera.lifecycle.ProcessCameraProvider
-import com.google.android.sample.databinding.ActivityMainBinding
+import com.google.android.preview.databinding.ActivityMainBinding
 import java.nio.ByteBuffer
 import java.util.*
 import kotlin.system.measureTimeMillis
@@ -28,6 +26,7 @@ import androidx.camera.video.*
 import java.lang.IllegalArgumentException
 import androidx.camera.video.VideoCapture as VideoCaptureX
 
+import com.gfan.android.camerax_lib.CameraSelectorAdapter
 typealias LumaListener = (luma: Double) -> Unit
 
 

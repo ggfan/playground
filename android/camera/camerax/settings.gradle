@@ -1,4 +1,6 @@
 rootProject.name = "camerax"
 include ':java-app'
 include ':device-selector'
+include ':preview-view'
 
+include ':camerax-lib'

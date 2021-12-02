@@ -1,4 +1,4 @@
-package com.google.android.sample
+package com.google.android.preview
 
 import org.junit.Test
 

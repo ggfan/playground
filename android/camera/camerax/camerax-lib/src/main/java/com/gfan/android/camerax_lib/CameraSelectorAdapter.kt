@@ -1,4 +1,4 @@
-package com.google.android.sample
+package com.gfan.android.camerax_lib
 
 import android.annotation.SuppressLint
 import android.hardware.camera2.CameraCharacteristics

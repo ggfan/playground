@@ -135,11 +135,11 @@ public class MainActivity extends AppCompatActivity {
                 ExtensionMode.HDR;
              */
         int mode = ExtensionMode.NIGHT;
-        ExtensionsManager extensionsManager = ExtensionsManager.getInstance(this).get();
+        ExtensionsManager extensionsManager = ExtensionsManager.getInstanceAsync(this, cameraProvider).get();
         if(extensionsManager != null &&
-           extensionsManager.isExtensionAvailable(cameraProvider, cameraSelector, mode))
+           extensionsManager.isExtensionAvailable(cameraSelector, mode))
         {
-            cameraSelector = extensionsManager.getExtensionEnabledCameraSelector(cameraProvider, cameraSelector, mode);
+            cameraSelector = extensionsManager.getExtensionEnabledCameraSelector(cameraSelector, mode);
             Log.i(TAG, "Extension " + mode + " is supported");
         } else {
             Log.i(TAG, "Extension " + mode + " is not supported");
