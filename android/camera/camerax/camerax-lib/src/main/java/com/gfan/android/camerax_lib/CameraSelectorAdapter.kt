@@ -2,6 +2,7 @@ package com.gfan.android.camerax_lib
 
 import android.annotation.SuppressLint
 import android.hardware.camera2.CameraCharacteristics
+import android.net.wifi.aware.Characteristics
 import android.util.Log
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
@@ -28,7 +29,8 @@ class CameraSelectorAdapter {
                                 val thisCamId = Camera2CameraInfo.from(camInfo).cameraId
                                 thisCamId == cam2Infos[0].cameraId
                             }
-                        }.build()
+                        }
+                        .build()
                 }
                 else -> null
             }

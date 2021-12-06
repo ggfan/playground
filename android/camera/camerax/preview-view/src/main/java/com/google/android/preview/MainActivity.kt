@@ -14,6 +14,8 @@ import android.annotation.SuppressLint
 import android.icu.text.SimpleDateFormat
 import android.net.Uri
 import android.util.Log
+import android.util.Rational
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -22,13 +24,21 @@ import java.util.*
 import java.lang.IllegalArgumentException
 
 import com.gfan.android.camerax_lib.CameraSelectorAdapter
+import java.util.concurrent.atomic.AtomicInteger
 
+/**
+ * ToDO: https://github.com/devadvance/circularseekbar
+ */
 class MainActivity : AppCompatActivity() {
     private lateinit var uiBinding: ActivityMainBinding
     private var imageCapture: ImageCapture? = null
     private lateinit var outputDirectory:File
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var camera:Camera
+
+    private var exposureIndexValue = 0
+    private var exposureStep = Rational(0, 1)
+    private var exposureAdjustments = AtomicInteger(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,17 +53,63 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Set up the listener for take photo button
-        uiBinding.cameraCaptureButton.setOnClickListener { takePhoto() }
+        uiBinding.cameraCaptureButton.setOnClickListener {
+            if (exposureAdjustments.get() == 0) takePhoto() }
         outputDirectory = getOutputDirectory()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        initExposureValueControl()
     }
 
     private fun initExposureValueControl() {
         if (this::camera.isInitialized) {
-            //  val ev = camera.cameraControl.
+            val evState = camera.cameraInfo.exposureState
+            uiBinding.evSeekBar.apply {
+                isEnabled = evState.isExposureCompensationSupported
+                max = evState.exposureCompensationRange.upper
+                min = evState.exposureCompensationRange.lower
+                exposureIndexValue = evState.exposureCompensationIndex
+                exposureStep = evState.exposureCompensationStep
+                progress = exposureIndexValue
+
+                /**
+                 * The exposureIndex setting is about 100 ~ 200ms; if there is a cancelling event
+                 * needed, it might takes up the 2 setting cycles (like 300 ms) (from samsung fold3)
+                 * a few things:
+                 *     -- the numbers are fairly large when dynamically updating the seekBar
+                 *     -- it is not feasible to turn on/off the UI with every index update, too annoying
+                 *     -- in the listener, the current hardware setting needs to read out
+                 *     -- In the application, the setting index has to be serialized?
+                 */
+                setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean)
+                    {
+                        if (!(this@MainActivity::camera.isInitialized)
+                            || seekBar == null || !fromUser) {
+                                return
+                        }
+
+                        exposureAdjustments.incrementAndGet()
+                        val startTime = System.currentTimeMillis()
+                        camera.cameraControl.setExposureCompensationIndex(progress)
+                            .addListener({
+                                val endTime = System.currentTimeMillis()
+                                exposureIndexValue = camera.cameraInfo.exposureState.exposureCompensationIndex
+                                Log.i(TAG, "Set $progress, current: $exposureIndexValue" +
+                                    " executionTime:  ${endTime - startTime}")
+                                exposureAdjustments.decrementAndGet()
+                            }, mainExecutor)
+                    }
+
+                    override fun onStartTrackingTouch(p0: SeekBar?) {
+                    }
+                    override fun onStopTrackingTouch(p0: SeekBar?) {
+                    }
+                })
+
+                Log.i(TAG, "ExposureRange: $min-$max, progress:$progress")
+            }
         }
+
     }
     private fun takePhoto() {
         // Get a stable reference of the modifiable image capture use case
@@ -70,19 +126,25 @@ class MainActivity : AppCompatActivity() {
 
         // Set up image capture listener, which is triggered after photo has
         // been taken
+        uiBinding.evSeekBar.isEnabled = false
+        val startTime = System.currentTimeMillis()
         imageCapture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onError(exc: ImageCaptureException) {
                     Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                    uiBinding.evSeekBar.isEnabled = false
                 }
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    val endTime = System.currentTimeMillis()
+
                     val savedUri = Uri.fromFile(photoFile)
-                    val msg = "Photo capture succeeded: $savedUri"
+                    val msg = "Photo capture succeeded: $savedUri in ${endTime - startTime}ms"
                     Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
                     Log.d(TAG, msg)
+                    uiBinding.evSeekBar.isEnabled = true
                 }
             })
     }
@@ -116,6 +178,7 @@ class MainActivity : AppCompatActivity() {
                 Log.e(TAG, "Use case binding failed", exc)
             }
 
+            initExposureValueControl()
         }, ContextCompat.getMainExecutor(this))
     }
     @SuppressLint("MissingSuperCall")
@@ -157,4 +220,5 @@ class MainActivity : AppCompatActivity() {
         private const val   REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
+
 }

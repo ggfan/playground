@@ -1,0 +1,8 @@
+rootProject.name = "KotlinPlayground"
+
+include ':intent'
+include ':recyclerView1'
+include ':recyclerView2'
+
+include ':cameraUtils'
+include ':sandbox'

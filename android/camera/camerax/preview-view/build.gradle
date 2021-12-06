@@ -54,4 +54,8 @@ dependencies {
     def camera_view_version= '1.0.0-SNAPSHOT'
     implementation "androidx.camera:camera-view:$camera_view_version"
     implementation "androidx.camera:camera-extensions:$camera_view_version"
+
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0"
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.0")
+
 }
