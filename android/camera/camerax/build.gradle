@@ -1,6 +1,8 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
     ext.kotlin_version = "1.5.21"
+    ext.java_version=JavaVersion.VERSION_1_8
+
     repositories {
         google()
         mavenCentral()
@@ -19,7 +21,7 @@ allprojects {
         google()
         mavenCentral()
         // for the nightly builds
-        maven { url 'https://androidx.dev/snapshots/builds/7963811/artifacts/repository' }
+        maven { url 'https://androidx.dev/snapshots/builds/7977482/artifacts/repository' }
         // to use local built full repo
         // maven { url '//Users/gfan/proj/camera/androidx-main/out/androidx/build/support_repo'}
     }

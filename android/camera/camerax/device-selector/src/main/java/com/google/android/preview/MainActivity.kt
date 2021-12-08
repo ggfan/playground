@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private var activeRecorder: Recording? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         uiBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(uiBinding.root)

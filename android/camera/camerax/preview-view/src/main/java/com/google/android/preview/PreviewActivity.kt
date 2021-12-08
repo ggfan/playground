@@ -15,30 +15,57 @@ import android.icu.text.SimpleDateFormat
 import android.net.Uri
 import android.util.Log
 import android.util.Rational
+import android.widget.Button
 import android.widget.SeekBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.camera.core.*
+import androidx.camera.extensions.ExtensionMode
+import androidx.camera.extensions.ExtensionsManager
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.android.camera.utils.GenericListAdapter
 import com.google.android.preview.databinding.ActivityMainBinding
 import java.util.*
 import java.lang.IllegalArgumentException
 
-import com.gfan.android.camerax_lib.CameraSelectorAdapter
+import com.gfan.android.camerax_lib.*
+import kotlinx.coroutines.launch
+
 import java.util.concurrent.atomic.AtomicInteger
+
 
 /**
  * ToDO: https://github.com/devadvance/circularseekbar
  */
-class MainActivity : AppCompatActivity() {
+class PreviewActivity : AppCompatActivity() {
     private lateinit var uiBinding: ActivityMainBinding
     private var imageCapture: ImageCapture? = null
     private lateinit var outputDirectory:File
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var camera:Camera
+    private lateinit var baseCameraSelector:CameraSelector
 
+    private var lifecycleRegistry : LifecycleRegistry? = null
+
+    private var extensionSelectorIndex = 0
     private var exposureIndexValue = 0
     private var exposureStep = Rational(0, 1)
     private var exposureAdjustments = AtomicInteger(0)
+
+
+    private var extensionCapabilities = listOf<Int>()
+
+    private var cameraIndex = 0
+
+    override fun getLifecycle(): LifecycleRegistry {
+        if (lifecycleRegistry == null) {
+            lifecycleRegistry = LifecycleRegistry(this)
+        }
+        return lifecycleRegistry!!
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,9 +79,18 @@ class MainActivity : AppCompatActivity() {
                 REQUEST_CODE_PERMISSIONS)
         }
 
+        uiBinding.cameraButton.setOnClickListener {
+            val types = CameraSelectorAdapter.supportedCameraSelectorTypes()
+            cameraIndex = ++cameraIndex % types.size
+            startCamera()
+            (it as Button).text = types[cameraIndex]
+        }
+
         // Set up the listener for take photo button
-        uiBinding.cameraCaptureButton.setOnClickListener {
-            if (exposureAdjustments.get() == 0) takePhoto() }
+        uiBinding.captureButton.setOnClickListener {
+            // Taking photos while exposure adjustment is not in progress
+            if (exposureAdjustments.get() == 0) takePhoto()
+        }
         outputDirectory = getOutputDirectory()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
@@ -83,7 +119,7 @@ class MainActivity : AppCompatActivity() {
                 setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean)
                     {
-                        if (!(this@MainActivity::camera.isInitialized)
+                        if (!(this@PreviewActivity::camera.isInitialized)
                             || seekBar == null || !fromUser) {
                                 return
                         }
@@ -164,21 +200,43 @@ class MainActivity : AppCompatActivity() {
                 }
 
             imageCapture = ImageCapture.Builder().build()
-            val cameraSelector:CameraSelector =
-                CameraSelectorAdapter.selectExternalOrBestCamera(cameraProvider)
+            val cameraName = CameraSelectorAdapter.supportedCameraSelectorTypes()[cameraIndex]
+            var cameraSelector:CameraSelector =
+                CameraSelectorAdapter.selectCamera(cameraName, cameraProvider)
                     ?: throw IllegalArgumentException()
+
+            baseCameraSelector = cameraSelector
+
+            // experimenting the extensions
+            val extMgr = ExtensionsManager.getInstanceAsync(this, cameraProvider).get()
+            extensionCapabilities = ExtensionMode_getSupportedModes().filter {
+                    extMgr.isExtensionAvailable(cameraSelector, it)
+            }
+            initializeExtensions()
+
+            val extType = extensionCapabilities[extensionSelectorIndex]
+            if(extMgr.isExtensionAvailable(cameraSelector, extType)) {
+                cameraSelector = extMgr.getExtensionEnabledCameraSelector(cameraSelector, extType)
+                Log.i(TAG, "===== Turning extension Type: $extType")
+            } else  {
+                Log.i(TAG, "===== Extension $extType is not supported")
+            }
+
+            // extensions end
             try {
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera
                 camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+                initExposureValueControl()
 
+                uiBinding.featureStatus.text = ExtensionMode_getName(extType)
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
+                uiBinding.featureStatus.text = ExtensionMode_getName(ExtensionMode.NONE)
             }
 
-            initExposureValueControl()
         }, ContextCompat.getMainExecutor(this))
     }
     @SuppressLint("MissingSuperCall")
@@ -219,6 +277,57 @@ class MainActivity : AppCompatActivity() {
         private const val FILENAME_FORMAT="yyyy-MM-dd-HH-mm-ss-SSS"
         private const val   REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+    }
+
+
+    /**
+     *  initializeQualitySectionsUI():
+     *    Populate a RecyclerView to display camera capabilities:
+     *       - one front facing
+     *       - one back facing
+     *    User selection is saved to qualitySelectorIndex, will be used
+     *    in the bindCaptureUsecase().
+     */
+    private fun initializeExtensions() {
+        val selectorStrings = extensionCapabilities.map {
+            ExtensionMode_getName(it)
+        }
+
+        // create the adapter to QualitySelector RecyclerView
+        uiBinding.extensions.apply {
+            layoutManager = LinearLayoutManager(this@PreviewActivity)
+            adapter = GenericListAdapter(
+                selectorStrings,
+                itemLayoutId = R.layout.single_extension_view
+            ) { holderView, qcString, position ->
+
+                holderView.apply {
+                    findViewById<TextView>(R.id.extensionTextView)?.text = qcString
+                    // select the default quality selector
+                    isSelected = (position == extensionSelectorIndex)
+                }
+
+                holderView.setOnClickListener { view ->
+                    if (extensionSelectorIndex == position) return@setOnClickListener
+
+                    uiBinding.extensions.let {
+                        // deselect the previous selection on UI.
+                        it.findViewHolderForAdapterPosition(extensionSelectorIndex)
+                            ?.itemView
+                            ?.isSelected = false
+                    }
+                    // turn on the new selection on UI.
+                    view.isSelected = true
+                    extensionSelectorIndex = position
+
+                    // rebind the use cases to put the new QualitySelection in action.
+                     lifecycleScope.launch {
+                        startCamera()
+                    }
+                }
+            }
+            isEnabled = false
+        }
     }
 
 }

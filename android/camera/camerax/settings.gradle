@@ -4,3 +4,4 @@ include ':device-selector'
 include ':preview-view'
 
 include ':camerax-lib'
+include ':camera-utils'
