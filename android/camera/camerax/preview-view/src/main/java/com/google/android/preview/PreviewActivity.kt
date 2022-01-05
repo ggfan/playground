@@ -205,12 +205,15 @@ class PreviewActivity : AppCompatActivity() {
                 CameraSelectorAdapter.selectCamera(cameraName, cameraProvider)
                     ?: throw IllegalArgumentException()
 
+            cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
             baseCameraSelector = cameraSelector
 
             // experimenting the extensions
             val extMgr = ExtensionsManager.getInstanceAsync(this, cameraProvider).get()
             extensionCapabilities = ExtensionMode_getSupportedModes().filter {
-                    extMgr.isExtensionAvailable(cameraSelector, it)
+                val supportable = extMgr.isExtensionAvailable(cameraSelector, it)
+                Log.i("CameraX", "extension ${ExtensionMode_getName(it)} is $supportable")
+                supportable
             }
             initializeExtensions()
 
