@@ -121,11 +121,14 @@ class MainActivity : AppCompatActivity() {
                     }
                     is VideoRecordEvent.Finalize -> {
                         if (!recordEvent.hasError()) {
-                            val msg = "Video capture succeeded: ${recordEvent.outputResults.outputUri}"
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                            val msg = "Video capture succeeded: " +
+                                      "${recordEvent.outputResults.outputUri}"
+                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT)
+                                .show()
                             Log.d(TAG, msg)
                         } else {
-                            Log.e(TAG, "Video capture ends with error: ${recordEvent.error}")
+                            Log.e(TAG, "Video capture ends with error: " +
+                                            "${recordEvent.error}")
                         }
                         viewBinding.videoCaptureButton.apply {
                             text = getString(R.string.start_capture)
@@ -149,21 +152,27 @@ class MainActivity : AppCompatActivity() {
                 .also {
                     it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
                 }
+
+            val recorder = Recorder.Builder()
+                .setQualitySelector(
+                    QualitySelector.from(Quality.HIGHEST,
+                        FallbackStrategy.higherQualityOrLowerThan(Quality.SD))
+                )
+                .build()
+            videoCapture = VideoCapture.withOutput(recorder)
+
             imageCapture = ImageCapture.Builder().build()
 
-            /*
             val imageAnalyzer = ImageAnalysis.Builder()
                 .build()
                 .also {
-                    it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
-                        Log.d(TAG, "Average luminosity: $luma")
-                    })
+                    it.setAnalyzer(
+                        cameraExecutor,
+                        LuminosityAnalyzer { luma ->
+                            Log.d(TAG, "Average luminosity: $luma")
+                        }
+                    )
                 }
-                */
-            val recorder = Recorder.Builder()
-                .setQualitySelector(QualitySelector.from(Quality.HIGHEST, FallbackStrategy.higherQualityOrLowerThan(Quality.SD)))
-                .build()
-            videoCapture = VideoCapture.withOutput(recorder)
 
             // Select back camera as a default
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -173,9 +182,7 @@ class MainActivity : AppCompatActivity() {
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageCapture, videoCapture)
-
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture, videoCapture)
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
