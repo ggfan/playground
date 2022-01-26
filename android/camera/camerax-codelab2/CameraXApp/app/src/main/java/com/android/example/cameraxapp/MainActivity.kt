@@ -24,6 +24,7 @@ import android.provider.MediaStore
 
 import android.content.ContentValues
 import android.os.Build
+import androidx.camera.view.PreviewView
 
 typealias LumaListener = (luma: Double) -> Unit
 
@@ -64,11 +65,12 @@ class MainActivity : AppCompatActivity() {
 
         // Create time stamped name and MediaStore entry.
         val name  = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
-            .format(System.currentTimeMillis())
+                    .format(System.currentTimeMillis()) // + ".jpg"
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.TITLE, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if(Build.VERSION.SDK_INT >= 29) {
+            if(Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Image")
             }
         }
@@ -122,7 +124,7 @@ class MainActivity : AppCompatActivity() {
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-            if (Build.VERSION.SDK_INT >= 29) {
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
                 put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/CameraX-Video")
             }
         }
@@ -191,7 +193,7 @@ class MainActivity : AppCompatActivity() {
                 .build()
             videoCapture = VideoCapture.withOutput(recorder)
 
-//            imageCapture = ImageCapture.Builder().build()
+            imageCapture = ImageCapture.Builder().build()
 
             val imageAnalyzer = ImageAnalysis.Builder()
                 .build()
@@ -210,7 +212,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Bind use cases to camera
                 cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageAnalyzer, videoCapture)
+                    this, cameraSelector, preview, imageCapture, videoCapture)
 
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
