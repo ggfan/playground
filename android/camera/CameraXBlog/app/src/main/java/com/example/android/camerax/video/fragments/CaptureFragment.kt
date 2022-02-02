@@ -39,6 +39,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import android.content.Intent
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
@@ -191,7 +192,7 @@ class CaptureFragment : Fragment() {
             recordingState = event
 
         updateUI(event)
-
+        
         if (event is VideoRecordEvent.Finalize) {
              // display the captured video
             lifecycleScope.launch {
@@ -223,6 +224,12 @@ class CaptureFragment : Fragment() {
                         requestFocus()
                     }.start()
                     mc.show(0)
+
+                    //snippet with ACTION_VIEW
+                    val playback = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(event.outputResults.outputUri, "video/*")
+                    }
+                    startActivity(playback);
 
                     "Video capture succeeded: ${event.outputResults.outputUri}"
                 } else {
