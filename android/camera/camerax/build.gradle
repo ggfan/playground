@@ -21,7 +21,7 @@ allprojects {
         google()
         mavenCentral()
         // for the nightly builds
-        maven { url 'https://androidx.dev/snapshots/builds/8042655/artifacts/repository' }
+        // maven { url 'https://androidx.dev/snapshots/builds/8042655/artifacts/repository' }
         // to use local built full repo
         // maven { url '//Users/gfan/proj/camera/androidx-main/out/androidx/build/support_repo'}
     }

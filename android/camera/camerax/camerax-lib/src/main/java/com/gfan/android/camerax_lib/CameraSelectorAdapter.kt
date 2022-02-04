@@ -10,7 +10,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import java.lang.Exception
 import java.lang.IllegalArgumentException
 
-@SuppressLint("UnsafeOptInUsageError")
+//@SuppressLint("UnsafeOptInUsageError")
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 object CameraSelectorAdapter {
     fun selectExternalOrBestCamera(provider: ProcessCameraProvider?):CameraSelector? {

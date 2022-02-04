@@ -64,7 +64,11 @@ import com.example.android.camerax.video.extensions.getAspectRatioString
 import com.example.android.camerax.video.extensions.getNameString
 import kotlinx.coroutines.*
 import java.util.*
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import android.hardware.camera2.CameraCharacteristics
+import android.util.Size
 
+@androidx.annotation.OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
 class CaptureFragment : Fragment() {
 
     // UI with ViewBinding
@@ -269,6 +273,8 @@ class CaptureFragment : Fragment() {
             whenCreated {
                 val provider = ProcessCameraProvider.getInstance(requireContext()).await()
 
+                getAvailableResolutions(provider)
+
                 provider.unbindAll()
                 for (camSelector in arrayOf(
                     CameraSelector.DEFAULT_BACK_CAMERA,
@@ -295,6 +301,11 @@ class CaptureFragment : Fragment() {
                                            else "Front Camera"
                                Log.d(tag, "Resolution: ${it?.width} x ${it?.height}")
                             }
+
+                            // Readout camera device livel
+                            val cam2Info = Camera2CameraInfo.from(camera.cameraInfo)
+                            val devLevel = cam2Info.getCameraCharacteristic(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)
+                            Log.d("CameraLevel", "$devLevel for $camSelector")
 
                         }
                     } catch (exc: java.lang.Exception) {
@@ -601,5 +612,23 @@ class CaptureFragment : Fragment() {
         const val DEFAULT_QUALITY_IDX = 0
         val TAG:String = CaptureFragment::class.java.simpleName
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+    }
+
+    @androidx.annotation.OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
+    private fun getAvailableResolutions(provider :ProcessCameraProvider) {
+        data class CameraResolution(val id:String, val quality: Quality, val size : Size)
+        val resolutions = mutableListOf<CameraResolution>()
+        var cameraId = 0
+        provider.availableCameraInfos.forEach { camInfo ->
+            QualitySelector.getSupportedQualities(camInfo).forEach { quality ->
+                QualitySelector.getResolution(camInfo, quality)?.also { size ->
+                    resolutions.add(CameraResolution(cameraId.toString(), quality, size))
+                    cameraId++
+                }
+            }
+        }
+        resolutions.forEach { res ->
+            Log.d("CameraResolution", "${res.id} : ${res.size.width} x ${res.size.height} : ${res.quality}")
+        }
     }
 }
