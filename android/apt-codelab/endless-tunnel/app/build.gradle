@@ -1,0 +1,107 @@
+/*
+ * Copyright (C) 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import org.gradle.internal.os.OperatingSystem
+
+apply plugin: 'com.android.application'
+
+
+
+android {
+    compileSdkVersion 30
+    ndkVersion '22.1.7171670'
+
+    defaultConfig {
+        applicationId 'com.gfan.sample.apt'
+        minSdkVersion 24
+        targetSdkVersion 30
+        versionCode     1
+        versionName    '1.0'
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_static'
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled = false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+                          'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            version '3.18.1'
+            path 'src/main/cpp/CMakeLists.txt'
+        }
+    }
+
+    buildFeatures.prefab = true
+}
+android.lintOptions {
+        abortOnError  = false
+}
+
+dependencies {
+    // Problem: when enabling all libs, could not build
+    implementation("androidx.games:games-frame-pacing:1.9.1")
+    implementation("androidx.games:games-performance-tuner:1.5.0")
+//    implementation("androidx.games:games-activity:1.1.0-rc01")
+//    implementation("androidx.games:games-controller:1.1.0-rc01")
+//    implementation("androidx.games:games-text-input:1.1.0")
+}
+
+
+task createJar(type: GradleBuild) {
+    buildFile = getGameSDKPath() + '/src/tuningfork/tools/validation/build.gradle'
+    tasks = ['createJar']
+}
+
+def getGameSDKPath() {
+    def properties = new Properties()
+    properties.load(new FileInputStream(rootProject.file("local.properties")))
+    def gameSDKPath = properties.getProperty("GameSDKPath")
+
+    print(gameSDKPath.toString())
+    print("===============")
+
+    return gameSDKPath.toString()
+}
+
+def getProtocPath() {
+    def properties =new Properties()
+    properties.load(new FileInputStream(rootProject.file("local.properties")))
+
+    String platformName
+    if (OperatingSystem.current().isLinux()) platformName = "linux-x86/bin/protoc"
+    if (OperatingSystem.current().isMacOsX()) platformName = "mac/bin/protoc"
+    if (OperatingSystem.current().isWindows()) platformName = "win/bin/protoc"
+    return getGameSDKPath() + "/third_party/protobuf-3.0.0/install/"  + platformName
+}
+
+task buildTuningForkBinFiles(type: Exec) {
+    dependsOn createJar
+    commandLine "java",
+            "-jar",
+            getGameSDKPath() + "/src/tuningfork/tools/validation/build/libs/TuningforkApkValidationTool.jar",
+            "--tuningforkPath",
+            "src/main/assets/tuningfork",
+            "--protoCompiler",
+            getProtocPath()
+}
+
+tasks.preBuild.dependsOn("buildTuningForkBinFiles")

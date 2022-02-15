@@ -274,6 +274,9 @@ class CaptureFragment : Fragment() {
                 val provider = ProcessCameraProvider.getInstance(requireContext()).await()
 
                 getAvailableResolutions(provider)
+                getResolutions(CameraSelector.DEFAULT_BACK_CAMERA, provider).forEach {
+                    Log.i("ResolutionEntry: ", "${it.key}, ${it.value}")
+                }
 
                 provider.unbindAll()
                 for (camSelector in arrayOf(
@@ -612,6 +615,33 @@ class CaptureFragment : Fragment() {
         const val DEFAULT_QUALITY_IDX = 0
         val TAG:String = CaptureFragment::class.java.simpleName
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+    }
+
+    private fun getResolutions(selector:CameraSelector,
+                               provider:ProcessCameraProvider
+    ): Map<Quality, Size> {
+        val resolutions = mutableMapOf<Quality, Size>()
+        val camInfo = selector.filter(provider.availableCameraInfos).first()
+        QualitySelector.getSupportedQualities(camInfo).forEach { quality ->
+            QualitySelector.getResolution(camInfo, quality)?.also { size ->
+               resolutions[quality] =  size
+            }
+        }
+        return resolutions.toMap()
+    }
+
+    private fun getResolutions2(
+        selector: CameraSelector,
+        provider: ProcessCameraProvider
+    ): Map<Quality, Size> {
+        return selector
+            .filter(provider.availableCameraInfos).firstOrNull()
+            ?.let { camInfo ->
+                QualitySelector.getSupportedQualities(camInfo)
+                .associateWith { quality ->
+                    QualitySelector.getResolution(camInfo, quality)!!
+                }
+            } ?: emptyMap()
     }
 
     @androidx.annotation.OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
