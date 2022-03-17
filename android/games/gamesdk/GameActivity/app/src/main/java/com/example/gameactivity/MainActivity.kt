@@ -13,7 +13,8 @@ class MainActivity : GameActivity() {
 
     companion object {
       init {
-         System.loadLibrary("gameactivity")
+         System.loadLibrary("gameactivity-internal")
+         System.loadLibrary("gameactivity-app")
       }
     }
     private external fun startEngine():Int
