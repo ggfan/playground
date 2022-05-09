@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "GameActivity"
-include ':app'
+include ':app', ':poc'
