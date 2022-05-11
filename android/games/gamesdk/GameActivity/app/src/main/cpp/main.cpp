@@ -25,15 +25,16 @@
 #include <cassert>
 
 #include <EGL/egl.h>
-#include <GLES/gl.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 
 #include <android/sensor.h>
 #include <android/log.h>
 #include <game-activity/native_app_glue/android_native_app_glue.h>
 #include <game-text-input/gametextinput.h>
 
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "game-activity", __VA_ARGS__))
+#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "game-activity", __VA_ARGS__))
 
 /**
  * Our saved state data.
@@ -152,9 +153,9 @@ static int engine_init_display(struct engine* engine) {
         LOGI("OpenGL Info: %s", info);
     }
     // Initialize GL state.
-    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+    // glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
     glEnable(GL_CULL_FACE);
-    glShadeModel(GL_SMOOTH);
+    // glShadeModel(GL_SMOOTH);
     glDisable(GL_DEPTH_TEST);
 
     return 0;
@@ -169,9 +170,11 @@ static void engine_draw_frame(struct engine* engine) {
         return;
     }
 
+    LOGI("Drawing frame with %f", engine->state.angle);
+
     // Just fill the screen with a color.
-    glClearColor(((float)engine->state.x)/engine->width, engine->state.angle,
-                 ((float)engine->state.y)/engine->height, 1);
+    glClearColor(engine->state.angle, engine->state.angle,
+                 .5f, 1);
     glClear(GL_COLOR_BUFFER_BIT);
 
     eglSwapBuffers(engine->display, engine->surface);
@@ -228,6 +231,7 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
             if (engine->app->window != nullptr) {
                 engine_init_display(engine);
                 engine_draw_frame(engine);
+                engine->animating = 1;
             }
             break;
         case APP_CMD_TERM_WINDOW:

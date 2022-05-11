@@ -38,5 +38,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     game-activity::game-activity
     android
     EGL
-    GLESv1_CM
+    GLESv2
     log)

@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId = 'com.android.example.games.gameactivity'
-        minSdkVersion 16
+        minSdkVersion 20
         targetSdkVersion 31
         externalNativeBuild {
             cmake {
