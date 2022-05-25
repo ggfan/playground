@@ -25,7 +25,7 @@ public class MainActivity extends GameActivity {
     }
 
     static {
-        System.loadLibrary("game-activity-app");
+        System.loadLibrary("main");
     }
 }
 
