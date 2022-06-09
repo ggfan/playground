@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BEGIN_INCLUDE(manifest) -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.example.game_activity"
+          android:versionCode="1"
+          android:versionName="1.0">
+
+  <application
+      android:allowBackup="false"
+      android:fullBackupContent="false"
+      android:icon="@mipmap/ic_launcher"
+      android:label="@string/app_name"
+      android:theme="@style/Application.Fullscreen">
+
+    <activity android:name=".MainActivity"
+        android:exported="true"
+        android:configChanges="orientation|keyboardHidden">
+      <!-- Tell GameActivity the name of our .so -->
+      <meta-data android:name="android.app.lib_name"
+                 android:value="GameActivity" />
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+
+</manifest>
+<!-- END_INCLUDE(manifest) -->

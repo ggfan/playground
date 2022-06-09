@@ -25,24 +25,22 @@
 #include <cassert>
 
 #include <EGL/egl.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
+#include <GLES/gl.h>
 
 #include <android/sensor.h>
 #include <android/log.h>
 #include <game-activity/native_app_glue/android_native_app_glue.h>
-#include <game-text-input/gametextinput.h>
 
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "game-activity", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "game-activity", __VA_ARGS__))
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
+#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
 
 /**
  * Our saved state data.
  */
 struct saved_state {
     float angle;
-    int32_t x;
-    int32_t y;
+    float x;
+    float y;
 };
 
 /**
@@ -153,9 +151,9 @@ static int engine_init_display(struct engine* engine) {
         LOGI("OpenGL Info: %s", info);
     }
     // Initialize GL state.
-    // glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
     glEnable(GL_CULL_FACE);
-    // glShadeModel(GL_SMOOTH);
+    glShadeModel(GL_SMOOTH);
     glDisable(GL_DEPTH_TEST);
 
     return 0;
@@ -170,11 +168,9 @@ static void engine_draw_frame(struct engine* engine) {
         return;
     }
 
-    LOGI("Drawing frame with %f", engine->state.angle);
-
     // Just fill the screen with a color.
-    glClearColor(engine->state.x, engine->state.y,
-                 engine->state.angle, 1);
+    glClearColor(((float)engine->state.x)/engine->width, engine->state.angle,
+                 ((float)engine->state.y)/engine->height, 1);
     glClear(GL_COLOR_BUFFER_BIT);
 
     eglSwapBuffers(engine->display, engine->surface);
@@ -203,14 +199,31 @@ static void engine_term_display(struct engine* engine) {
 /**
  * Process the next input event.
  */
-static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) {
+static int32_t engine_handle_input(struct android_app* app) {
     auto* engine = (struct engine*)app->userData;
-    if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
-        engine->animating = 1;
-        engine->state.x = AMotionEvent_getX(event, 0);
-        engine->state.y = AMotionEvent_getY(event, 0);
-        return 1;
+
+    auto ib = android_app_swap_input_buffers(app);
+    LOGI("MotionEvent ib (%p)", ib);
+    if (ib && ib->motionEventsCount) {
+        LOGI("Got MotionEvent: %d", (int32_t)ib->motionEventsCount);
+        for (int i = 0; i < ib->motionEventsCount; i++) {
+            auto event = & ib->motionEvents[i];
+            LOGI("Got raw MotionEvent list(%d): %d", i, event->action);
+            auto action = event->action & AMOTION_EVENT_ACTION_MASK;
+            if (action  == AMOTION_EVENT_ACTION_UP  ||
+                action  == AMOTION_EVENT_ACTION_POINTER_UP) {
+                int32_t ptrIdx = ((event->action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK)
+                                   >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
+                engine->state.x = GameActivityPointerAxes_getAxisValue(&event->pointers[ptrIdx], AMOTION_EVENT_AXIS_X);
+                engine->state.y = GameActivityPointerAxes_getAxisValue(&event->pointers[ptrIdx], AMOTION_EVENT_AXIS_Y);
+                LOGI("ptr: %d, coordinates:(%f, %f)", ptrIdx, engine->state.x, engine->state.y);
+            }
+        }
+        android_app_clear_motion_events(ib);
     }
+
+    // process the KeyEvent in the similar way.
+
     return 0;
 }
 
@@ -231,7 +244,6 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
             if (engine->app->window != nullptr) {
                 engine_init_display(engine);
                 engine_draw_frame(engine);
-                engine->animating = 1;
             }
             break;
         case APP_CMD_TERM_WINDOW:
@@ -248,6 +260,7 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
                                                engine->accelerometerSensor,
                                                (1000L/60)*1000);
             }
+            // we could start drawing from here.
             engine->animating = 1;
             break;
         case APP_CMD_LOST_FOCUS:
@@ -324,7 +337,6 @@ void android_main(struct android_app* state) {
     memset(&engine, 0, sizeof(engine));
     state->userData = &engine;
     state->onAppCmd = engine_handle_cmd;
-    // state->onInputEvent = engine_handle_input;
     engine.app = state;
 
     // Prepare to monitor accelerometer
@@ -346,48 +358,44 @@ void android_main(struct android_app* state) {
 
     while (true) {
         // Read all pending events.
+        int ident;
         int events;
         struct android_poll_source* source;
 
         // If not animating, we will block forever waiting for events.
         // If animating, we loop until all events are read, then continue
         // to draw the next frame of animation.
-        while ((ALooper_pollAll(engine.animating ? 0 : -1, nullptr, &events,
+        while ((ident=ALooper_pollAll(engine.animating ? 0 : -1, nullptr, &events,
                                       (void**)&source)) >= 0) {
+
             // Process this event.
             if (source != nullptr) {
                 source->process(source->app, source);
             }
+
+            // If a sensor has data, process it now.
+            if (ident == LOOPER_ID_USER) {
+                if (engine.accelerometerSensor != nullptr) {
+                    ASensorEvent event;
+                    while (ASensorEventQueue_getEvents(engine.sensorEventQueue,
+                                                       &event, 1) > 0) {
+                        LOGI("accelerometer: x=%f y=%f z=%f",
+                             event.acceleration.x, event.acceleration.y,
+                             event.acceleration.z);
+                    }
+                }
+            }
+
             // Check if we are exiting.
             if (state->destroyRequested != 0) {
                 engine_term_display(&engine);
                 return;
             }
         }
-        auto ib = android_app_swap_input_buffers(state);
-        if (ib) {
-             if (ib->motionEventsCount) {
-                 for (uint64_t i = 0; i < ib->motionEventsCount; ++i) {
-                     GameActivityMotionEvent* motionEvent = &ib->motionEvents[i];
-                     auto action = motionEvent->action & AMOTION_EVENT_ACTION_MASK;
-                     if (action != AMOTION_EVENT_ACTION_UP) continue;
 
-                     int32_t ptrIdx = (action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >>
-                                      AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
-                     engine.state.x = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[ptrIdx], AMOTION_EVENT_AXIS_X);
-                     engine.state.y = GameActivityPointerAxes_getAxisValue(&motionEvent->pointers[ptrIdx], AMOTION_EVENT_AXIS_Y);
-                     LOGI("MotionEvent location: (%d, %d)", engine.state.x, engine.state.y);
-                     engine.state.x /= engine.width;
-                     engine.state.y /= engine.height;
-                     LOGI("MotionEvent normalized: (%d, %d)", engine.state.x, engine.state.y);
-                 }
-                 android_app_clear_motion_events(ib);
-             }
-             if (ib->keyEventsCount) {
-                 LOGI("detected KeyEvent (%d), clearing them", (uint32_t)ib->keyEventsCount);
-                 android_app_clear_key_events(ib);
-            }
-        }
+        // handle input touch event
+        engine_handle_input(state);
+
         if (engine.animating) {
             // Done with events; draw next animation frame.
             engine.state.angle += .01f;

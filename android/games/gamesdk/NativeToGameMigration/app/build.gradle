@@ -1,0 +1,40 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 31
+    ndkVersion '22.1.7171670'
+
+    defaultConfig {
+        applicationId = 'com.example.game_activity'
+        minSdkVersion 19
+        targetSdkVersion 31
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_static'
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'),
+                    'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            version '3.18.1'
+            path 'src/main/cpp/CMakeLists.txt'
+        }
+    }
+    buildFeatures {
+        prefab true
+    }
+}
+
+dependencies {
+    // implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.core:core:1.8.0'
+    implementation 'androidx.appcompat:appcompat:1.4.2'
+    implementation "androidx.games:games-activity:1.1.0"
+}
