@@ -14,20 +14,27 @@
 # limitations under the License.
 #
 
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.18.1)
 project(GameActivity)
 
 find_package(game-activity REQUIRED CONFIG)
 
-# now build app's shared lib
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Werror")
 
-add_library(${PROJECT_NAME} SHARED game-activity-src.cpp main.cpp)
+# now build app's shared lib
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -Werror")
+
+add_library(${PROJECT_NAME} SHARED main.cpp)
 
 # add lib dependencies
 target_link_libraries(${PROJECT_NAME}
-    game-activity::game-activity
+    game-activity::game-activity_static
     android
     EGL
     GLESv1_CM
     log)
+
+# this workaround might be needed when compiling with other libs, just
+# adding it in to ensure the function being kept in the release build.
+set(CMAKE_SHARED_LINKER_FLAGS
+    "${CMAKE_SHARED_LINKER_FLAGS} -u \
+    Java_com_google_androidgamesdk_GameActivity_initializeNativeCode")

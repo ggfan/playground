@@ -203,8 +203,8 @@ static int32_t engine_handle_input(struct android_app* app) {
     auto* engine = (struct engine*)app->userData;
 
     auto ib = android_app_swap_input_buffers(app);
-    LOGI("MotionEvent ib (%p)", ib);
-    if (ib && ib->motionEventsCount) {
+    if (!ib ) return 0;
+    if(ib->motionEventsCount) {
         LOGI("Got MotionEvent: %d", (int32_t)ib->motionEventsCount);
         for (int i = 0; i < ib->motionEventsCount; i++) {
             auto event = & ib->motionEvents[i];
@@ -223,7 +223,16 @@ static int32_t engine_handle_input(struct android_app* app) {
     }
 
     // process the KeyEvent in the similar way.
-
+    if (ib->keyEventsCount) {
+        for (int idx = 0; idx < ib->keyEventsCount; idx++) {
+            auto& event = ib->keyEvents[idx];
+            if (event.keyCode == AKEYCODE_BACK &&
+                event.action == AKEY_EVENT_ACTION_DOWN) {
+                app->destroyRequested = 1;
+            }
+        }
+        android_app_clear_key_events(ib);
+    }
     return 0;
 }
 
@@ -324,7 +333,8 @@ ASensorManager* AcquireASensorManagerInstance(android_app* app) {
 
   return getInstanceFunc();
 }
-
+// forward declaration.
+void app_finish(android_app *app);
 
 /**
  * This is the main entry point of a native application that is using
@@ -389,6 +399,7 @@ void android_main(struct android_app* state) {
             // Check if we are exiting.
             if (state->destroyRequested != 0) {
                 engine_term_display(&engine);
+                app_finish(state);
                 return;
             }
         }
@@ -408,5 +419,27 @@ void android_main(struct android_app* state) {
             engine_draw_frame(&engine);
         }
     }
+}
+
+static JavaVM  *g_vm = nullptr;
+static jmethodID g_finishMethodId;
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    JNIEnv* env;
+
+    g_vm = vm;
+    if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR; // JNI version not supported.
+    }
+
+    jclass  clz = env->FindClass("com/google/androidgamesdk/GameActivity");
+    g_finishMethodId = env->GetMethodID(clz, "finish", "()V");
+    return  JNI_VERSION_1_6;
+}
+
+void app_finish(android_app *app) {
+    JNIEnv* env = nullptr;
+    g_vm->AttachCurrentThread(&env, NULL);
+    env->CallVoidMethod(app->activity->javaGameActivity, g_finishMethodId);
+    app->activity->vm->DetachCurrentThread();
 }
 //END_INCLUDE(all)

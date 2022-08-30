@@ -15,9 +15,6 @@
     <activity android:name=".MainActivity"
         android:exported="true"
         android:configChanges="orientation|keyboardHidden">
-      <!-- Tell GameActivity the name of our .so -->
-      <meta-data android:name="android.app.lib_name"
-                 android:value="GameActivity" />
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
