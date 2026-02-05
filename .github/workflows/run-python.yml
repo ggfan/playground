@@ -1,0 +1,32 @@
+name: Run Python Script
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # Allows you to manually click "Run" button on website
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Download your code to the runner
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Install Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. (Optional) Install libraries if you have them
+      # - name: Install dependencies
+      #   run: |
+      #     python -m pip install --upgrade pip
+      #     if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # 4. Run your script
+      - name: Start the app
+        run: python greeting.py
+
